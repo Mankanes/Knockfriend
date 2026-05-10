@@ -185,6 +185,22 @@
         <!-- Moje statistiky (jen pro prihlasene) -->
         <div id="my-stats-section" class="stats-section" style="display:none">
           <div class="stats-section-title">Your stats</div>
+
+          <!-- Rank display -->
+          <div id="my-rank-display" class="rank-display">
+            <div id="my-rank-badge" class="rank-badge rank-Bronze">
+              <span class="rank-letter">B</span>
+              <span class="rank-num">1</span>
+            </div>
+            <div class="rank-info">
+              <div id="my-rank-name" class="rank-name">Bronze 1</div>
+              <div class="rank-progress-bar">
+                <div id="my-rank-fill" class="rank-progress-fill" style="width:0%"></div>
+              </div>
+              <div id="my-rank-xp" class="rank-xp-text">0 / 100 XP</div>
+            </div>
+          </div>
+
           <div class="stat-row">
             <span class="stat-label">Games</span>
             <span id="stat-my-games" class="stat-value">0</span>
@@ -233,6 +249,7 @@
           <div class="stats-section-title leaderboard-title">
             <span>Leaderboard</span>
             <select id="leaderboard-sort" class="leaderboard-sort">
+              <option value="xp">Rank/XP</option>
               <option value="kills">Kills</option>
               <option value="wins">Wins</option>
               <option value="games">Games</option>

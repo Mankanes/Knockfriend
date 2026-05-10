@@ -2995,3 +2995,134 @@ body {
 body:has(#game.screen.active) .btn-feedback {
   display: none;
 }
+
+/* ======================= RANK SYSTEM ======================= */
+.rank-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(20, 26, 44, 0.8);
+  border: 1px solid rgba(74, 144, 226, 0.25);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.rank-badge {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  border: 2px solid rgba(255,255,255,0.15);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+.rank-badge .rank-letter {
+  font-size: 13px;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.rank-badge .rank-num {
+  font-size: 9px;
+  letter-spacing: 0;
+  margin-top: 1px;
+  opacity: 0.95;
+}
+
+/* Rank colors */
+.rank-Bronze       { background: linear-gradient(135deg, #cd7f32, #8b5a2b); }
+.rank-Silver       { background: linear-gradient(135deg, #c0c0c0, #6b7177); color: #1a1a1a; }
+.rank-Gold         { background: linear-gradient(135deg, #ffd700, #b8860b); color: #1a1a1a; }
+.rank-Platinum     { background: linear-gradient(135deg, #00d4d4, #00838f); }
+.rank-Diamond      { background: linear-gradient(135deg, #5e9eff, #1565c0); box-shadow: 0 0 12px rgba(94,158,255,0.5); }
+.rank-Master       { background: linear-gradient(135deg, #ba68c8, #6a1b9a); box-shadow: 0 0 14px rgba(186,104,200,0.6); }
+.rank-Grandmaster  { background: linear-gradient(135deg, #ff5252, #ff8a3d); box-shadow: 0 0 16px rgba(255,82,82,0.7); }
+
+.rank-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rank-name {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+}
+.rank-progress-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.rank-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff8a3d, #ffd700);
+  border-radius: 3px;
+  transition: width 0.4s;
+}
+.rank-xp-text {
+  font-size: 10px;
+  color: #94a3c4;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Rank inline (kompaktni - leaderboard, lobby) */
+.rank-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+  margin-right: 4px;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+}
+
+/* XP gained notifikace - floating top */
+.xp-notif {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff8a3d, #ff5e3d);
+  color: #fff;
+  padding: 10px 22px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 1px;
+  box-shadow: 0 6px 24px rgba(255, 138, 61, 0.5);
+  z-index: 100;
+  animation: xpNotifPop 2.2s ease-out forwards;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.xp-notif .xp-amount {
+  font-size: 18px;
+  margin-right: 8px;
+}
+.xp-notif .xp-reason {
+  font-size: 12px;
+  opacity: 0.9;
+  font-weight: 600;
+}
+@keyframes xpNotifPop {
+  0% { transform: translateX(-50%) translateY(-30px) scale(0.7); opacity: 0; }
+  15% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+  80% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-20px) scale(0.95); opacity: 0; }
+}

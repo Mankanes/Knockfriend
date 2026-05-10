@@ -405,16 +405,23 @@ class Game {
       for (const p of this.players.values()) {
         if (p.isBot || !p.username) continue;
         if (!users[p.username]) continue;
-        if (!users[p.username].stats) users[p.username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0 };
+        if (!users[p.username].stats) users[p.username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
         users[p.username].stats.gamesPlayed++;
+        // XP za odehrany match
+        let xpEarned = XP_REWARDS.matchPlayed;
+        let reason = "Match played";
         if (p.id === matchWinner) {
           users[p.username].stats.wins++;
+          xpEarned += XP_REWARDS.win;
+          reason = "Match won!";
         }
+        users[p.username].stats.xp = (users[p.username].stats.xp || 0) + xpEarned;
         if (p.matchStartTime) {
           users[p.username].stats.playTimeMs += (now - p.matchStartTime);
           p.matchStartTime = now; // reset pro dalsi match
         }
         saveUser(p.username);
+        emitToUser(p.username, "xp_gained", { amount: xpEarned, reason, totalXP: users[p.username].stats.xp });
       }
     } else {
       this.phase = "postround";
@@ -818,7 +825,7 @@ class Game {
     victim.deaths++;
     // Tracking statistik - jen pro prihlasene hrace
     if (victim.username && users[victim.username]) {
-      if (!users[victim.username].stats) users[victim.username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0 };
+      if (!users[victim.username].stats) users[victim.username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
       users[victim.username].stats.deaths++;
       saveUser(victim.username);
     }
@@ -827,9 +834,12 @@ class Game {
       if (k) {
         k.kills++;
         if (k.username && users[k.username]) {
-          if (!users[k.username].stats) users[k.username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0 };
+          if (!users[k.username].stats) users[k.username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
           users[k.username].stats.kills++;
+          users[k.username].stats.xp = (users[k.username].stats.xp || 0) + XP_REWARDS.kill;
           saveUser(k.username);
+          // Send notifikaci o XP
+          emitToUser(k.username, "xp_gained", { amount: XP_REWARDS.kill, reason: "Kill", totalXP: users[k.username].stats.xp });
         }
       }
     }
@@ -974,6 +984,101 @@ const io = new Server(server, {
 // Pouziva se pro: prihlaseni hracu (jmeno = username), admin
 // Data se ukladaji do users.json (prezije sleep, smazane pri redeployi)
 // ============================================================
+// ============================================================
+// RANK SYSTEM
+// ============================================================
+// 7 ranků × 3 podúrovně = 21 levelů
+// XP za akce: kill +10, win +50, played match +5, survival +5
+
+const RANK_XP = {
+  // Kazdy rank ma 3 podurovne (1, 2, 3); cisla = XP threshold pro VSTUP
+  "Bronze 1":      0,
+  "Bronze 2":      50,
+  "Bronze 3":      120,
+  "Silver 1":      220,
+  "Silver 2":      350,
+  "Silver 3":      520,
+  "Gold 1":        750,
+  "Gold 2":        1050,
+  "Gold 3":        1450,
+  "Platinum 1":    1950,
+  "Platinum 2":    2550,
+  "Platinum 3":    3300,
+  "Diamond 1":     4200,
+  "Diamond 2":     5300,
+  "Diamond 3":     6600,
+  "Master 1":      8200,
+  "Master 2":      10100,
+  "Master 3":      12500,
+  "Grandmaster 1": 15500,
+  "Grandmaster 2": 19500,
+  "Grandmaster 3": 25000,
+};
+const RANK_NAMES = Object.keys(RANK_XP);
+
+const XP_REWARDS = {
+  kill: 10,
+  win: 50,
+  matchPlayed: 5,
+  survival: 5, // bonus za preziti kola
+};
+
+// Vrati { name, level, currentXP, nextThreshold, progress } na zaklade XP
+function getRankInfo(xp) {
+  xp = Math.max(0, xp || 0);
+  let currentName = RANK_NAMES[0];
+  let currentThreshold = 0;
+  let nextThreshold = RANK_XP[RANK_NAMES[1]];
+  for (let i = RANK_NAMES.length - 1; i >= 0; i--) {
+    const name = RANK_NAMES[i];
+    if (xp >= RANK_XP[name]) {
+      currentName = name;
+      currentThreshold = RANK_XP[name];
+      nextThreshold = i + 1 < RANK_NAMES.length ? RANK_XP[RANK_NAMES[i + 1]] : null;
+      break;
+    }
+  }
+  // Progress 0..1 v ramci aktualniho rankoveho intervalu
+  let progress = 1;
+  if (nextThreshold !== null && nextThreshold > currentThreshold) {
+    progress = (xp - currentThreshold) / (nextThreshold - currentThreshold);
+    progress = Math.max(0, Math.min(1, progress));
+  }
+  return {
+    name: currentName,
+    xp,
+    currentThreshold,
+    nextThreshold,
+    progress,
+  };
+}
+
+// Pridej XP usera (server-side, ulozi do DB). Vraci nove XP.
+function addXP(username, amount) {
+  if (!username || !users[username]) return 0;
+  if (!users[username].stats) {
+    users[username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
+  }
+  if (typeof users[username].stats.xp !== "number") users[username].stats.xp = 0;
+  users[username].stats.xp += amount;
+  saveUser(username);
+  return users[username].stats.xp;
+}
+
+// Backfill XP pro stavajici uzivatele podle jejich starych statistik
+// (jednorazove pri loadu - jen pokud user nema xp pole)
+function backfillXP() {
+  for (const u of Object.values(users)) {
+    if (!u.stats) continue;
+    if (typeof u.stats.xp === "number") continue; // uz ma xp
+    const k = u.stats.kills || 0;
+    const w = u.stats.wins || 0;
+    const g = u.stats.gamesPlayed || 0;
+    u.stats.xp = (k * XP_REWARDS.kill) + (w * XP_REWARDS.win) + (g * XP_REWARDS.matchPlayed);
+  }
+}
+
+
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "knockfriend2026";
 const TESTER_PASSWORD = process.env.TESTER_PASSWORD || "knocktester2026";
 
@@ -1110,6 +1215,10 @@ async function loadUsers() {
 }
 
 // Migrace - kdyby user neměl stats (existoval pred pridanim featuru)
+// ============================================================
+// RANK / XP SYSTEM (legacy section - actual logic is in RANK_XP/getRankInfo above)
+// ============================================================
+
 function migrateUserStats() {
   for (const u of Object.values(users)) {
     if (!u.stats) {
@@ -1119,7 +1228,16 @@ function migrateUserStats() {
         deaths: 0,
         wins: 0,
         playTimeMs: 0,
+        xp: 0,
       };
+    }
+    // Migrace XP - pokud existujici hrac nema XP, vypocitej zpetne podle aktualnich statistik
+    if (typeof u.stats.xp !== "number") {
+      const k = u.stats.kills || 0;
+      const w = u.stats.wins || 0;
+      const g = u.stats.gamesPlayed || 0;
+      u.stats.xp = (k * XP_REWARDS.kill) + (w * XP_REWARDS.win) + (g * XP_REWARDS.matchPlayed);
+      console.log(`[RANK] Backfilled ${u.username}: ${u.stats.xp} XP (${k} kills, ${w} wins, ${g} games)`);
     }
   }
 }
@@ -1226,6 +1344,7 @@ function registerUser(username, password) {
       deaths: 0,         // celkem smrti
       wins: 0,           // pocet vyhranych matchu
       playTimeMs: 0,     // celkovy cas ve hre (millisekundy)
+      xp: 0,             // experience points (pro rank)
     },
   };
   saveUsers();
@@ -1461,8 +1580,9 @@ app.post("/api/stats/me", (req, res) => {
     res.json({ ok: false, error: "User not found" });
     return;
   }
-  const stats = user.stats || { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0 };
-  res.json({ ok: true, stats });
+  const stats = user.stats || { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
+  const rank = getRankInfo(stats.xp || 0);
+  res.json({ ok: true, stats, rank });
 });
 
 // Globalni stats - soucet pres vsechny uzivatele
@@ -1495,12 +1615,13 @@ app.get("/api/stats/global", (_req, res) => {
 
 // Leaderboard - top hraci serazeni podle killu
 app.get("/api/stats/leaderboard", (req, res) => {
-  const sortBy = (req.query?.sort || "kills").toString();
+  const sortBy = (req.query?.sort || "xp").toString();
   const limit = Math.min(parseInt(req.query?.limit) || 20, 100);
 
   const list = [];
   for (const [username, u] of Object.entries(users)) {
-    const s = u.stats || { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0 };
+    const s = u.stats || { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
+    const xp = s.xp || 0;
     list.push({
       username,
       isAdmin: !!u.isAdmin,
@@ -1510,6 +1631,8 @@ app.get("/api/stats/leaderboard", (req, res) => {
       deaths: s.deaths || 0,
       wins: s.wins || 0,
       playTimeMs: s.playTimeMs || 0,
+      xp,
+      rank: getRankInfo(xp),
     });
   }
 
@@ -1518,7 +1641,9 @@ app.get("/api/stats/leaderboard", (req, res) => {
     if (sortBy === "wins") return b.wins - a.wins;
     if (sortBy === "games") return b.gamesPlayed - a.gamesPlayed;
     if (sortBy === "hours") return b.playTimeMs - a.playTimeMs;
-    return b.kills - a.kills; // default
+    if (sortBy === "kills") return b.kills - a.kills;
+    if (sortBy === "rank" || sortBy === "xp") return b.xp - a.xp;
+    return b.xp - a.xp; // default - sort by XP/rank
   });
 
   res.json({ ok: true, players: list.slice(0, limit) });

@@ -423,6 +423,10 @@
         document.getElementById("stat-my-wins").textContent = s.wins;
         const kd = s.deaths > 0 ? (s.kills / s.deaths).toFixed(2) : s.kills.toFixed(2);
         document.getElementById("stat-my-kd").textContent = kd;
+        // Rank
+        if (data.rank) {
+          updateRankDisplay(data.rank);
+        }
       }
     } else {
       mySection.style.display = "none";
@@ -432,9 +436,55 @@
     refreshLeaderboard();
   }
 
+  // Aktualizuje rank box (badge + progress bar)
+  function updateRankDisplay(rank) {
+    const badge = document.getElementById("my-rank-badge");
+    const name = document.getElementById("my-rank-name");
+    const fill = document.getElementById("my-rank-fill");
+    const xpText = document.getElementById("my-rank-xp");
+    if (!badge || !name) return;
+
+    // Parse "Bronze 1" -> tier "Bronze", level "1"
+    const parts = (rank.name || "Bronze 1").split(" ");
+    const tier = parts[0]; // Bronze, Silver...
+    const level = parts[1] || "";
+
+    // Reset class & nastav novou
+    badge.className = "rank-badge rank-" + tier;
+    badge.querySelector(".rank-letter").textContent = tier === "Grandmaster" ? "GM" : tier[0];
+    const numEl = badge.querySelector(".rank-num");
+    if (level) {
+      numEl.style.display = "block";
+      numEl.textContent = level;
+    } else {
+      numEl.style.display = "none";
+    }
+    name.textContent = rank.name;
+    const pct = Math.round((rank.progress || 0) * 100);
+    fill.style.width = pct + "%";
+
+    if (rank.nextThreshold === null || rank.nextThreshold === undefined) {
+      xpText.textContent = rank.xp + " XP (MAX)";
+    } else {
+      const xpInLevel = rank.xp - rank.currentThreshold;
+      const xpForNext = rank.nextThreshold - rank.currentThreshold;
+      xpText.textContent = `${xpInLevel} / ${xpForNext} XP`;
+    }
+  }
+
+  // Inline rank badge (pro leaderboard, lobby)
+  function rankInlineHTML(rank) {
+    if (!rank) return "";
+    const parts = (rank.name || "Bronze 1").split(" ");
+    const tier = parts[0];
+    const level = parts[1] || "";
+    const letter = tier === "Grandmaster" ? "GM" : tier[0];
+    return `<span class="rank-inline rank-${tier}" title="${escapeHtml(rank.name)}">${letter}${level}</span>`;
+  }
+
   async function refreshLeaderboard() {
     const sortSelect = document.getElementById("leaderboard-sort");
-    const sort = sortSelect ? sortSelect.value : "kills";
+    const sort = sortSelect ? sortSelect.value : "xp";
     try {
       const r = await fetch(`/api/stats/leaderboard?sort=${sort}&limit=10`);
       const data = await r.json();
@@ -446,20 +496,22 @@
         return;
       }
       data.players.forEach((p, idx) => {
-        const rank = idx + 1;
+        const rankPos = idx + 1;
         const row = document.createElement("div");
         const isMe = currentUser && p.username === currentUser.username;
-        row.className = `lb-row rank-${rank}${isMe ? " me" : ""}`;
+        row.className = `lb-row rank-${rankPos}${isMe ? " me" : ""}`;
         const namePrefix = p.isAdmin ? "[A] " : (p.isTester ? "[T] " : "");
         const nameClass = p.isAdmin ? " admin" : (p.isTester ? " tester" : "");
+        const rankBadge = rankInlineHTML(p.rank);
         let statValue = "";
         if (sort === "wins") statValue = p.wins;
         else if (sort === "games") statValue = p.gamesPlayed;
         else if (sort === "hours") statValue = formatHours(p.playTimeMs);
-        else statValue = p.kills;
+        else if (sort === "kills") statValue = p.kills;
+        else statValue = p.xp;
         row.innerHTML = `
-          <div class="lb-rank">${"#" + rank}</div>
-          <div class="lb-name${nameClass}" title="${escapeHtml(p.username)}">${namePrefix}${escapeHtml(p.username)}</div>
+          <div class="lb-rank">#${rankPos}</div>
+          <div class="lb-name${nameClass}" title="${escapeHtml(p.username)}">${rankBadge}${namePrefix}${escapeHtml(p.username)}</div>
           <div class="lb-stat">${statValue}</div>
         `;
         listEl.appendChild(row);
@@ -1122,6 +1174,23 @@
       refreshFriendsList();
     }
   });
+
+  // XP gained notifikace
+  socket.on("xp_gained", (data) => {
+    showXPNotification(data.amount, data.reason);
+    // Refresh stats aby se aktualizoval rank/XP bar
+    if (typeof refreshStats === "function") {
+      setTimeout(refreshStats, 200);
+    }
+  });
+
+  function showXPNotification(amount, reason) {
+    const el = document.createElement("div");
+    el.className = "xp-notif";
+    el.innerHTML = `<span class="xp-amount">+${amount} XP</span><span class="xp-reason">${escapeHtml(reason || "")}</span>`;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2300);
+  }
 
   function refreshRooms() {
     fetch("/api/rooms")
