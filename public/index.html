@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="KnockFriend" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#0f1424" />
+<title>KNOCKFRIEND</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Doporuceni otocit telefon na sirku (zobrazi se jen kdyz je telefon na vysku ve hre) -->
+  <div id="rotate-hint" class="rotate-hint">
+    <div class="rotate-icon">[ROTATE]</div>
+    <h2>Otoč telefon na šířku</h2>
+    <p>Hra se hraje líp v landscape režimu</p>
+    <button id="rotate-dismiss" class="btn">Pokračovat na výšku</button>
+  </div>
+  <div id="app">
+    <!-- AUTH OBRAZOVKA - login a register -->
+    <div id="auth" class="screen active">
+      <canvas id="auth-bg" class="menu-bg"></canvas>
+
+      <div class="menu-hero">
+        <div class="logo">
+          <span class="logo-text">KNOCKFRIEND</span>
+        </div>
+        <div class="tagline">Multiplayer game with friends — 2-8 players</div>
+      </div>
+
+      <div class="menu-card auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">Login</button>
+          <button class="auth-tab" data-tab="register">Register</button>
+        </div>
+
+        <div id="auth-error" class="auth-error" style="display:none"></div>
+
+        <!-- LOGIN form -->
+        <div class="auth-form" id="login-form">
+          <label>Username</label>
+          <input id="login-username" type="text" maxlength="16" placeholder="Your username" autocomplete="username" />
+          <label>Password</label>
+          <input id="login-password" type="password" maxlength="64" placeholder="••••••••" autocomplete="current-password" />
+          <button id="btn-login" class="btn primary big">
+            <span class="btn-label">Log In</span>
+          </button>
+        </div>
+
+        <!-- REGISTER form -->
+        <div class="auth-form" id="register-form" style="display:none">
+          <label>Username</label>
+          <input id="register-username" type="text" maxlength="16" placeholder="Pick a username (3-16 chars)" autocomplete="username" />
+          <label>Password</label>
+          <input id="register-password" type="password" maxlength="64" placeholder="At least 4 characters" autocomplete="new-password" />
+          <label>Confirm password</label>
+          <input id="register-password2" type="password" maxlength="64" placeholder="Type it again" autocomplete="new-password" />
+          <button id="btn-register" class="btn primary big">
+            <span class="btn-label">Create Account</span>
+          </button>
+        </div>
+
+        <div class="auth-guest">
+          <button id="btn-guest" class="btn-link">Continue as Guest</button>
+        </div>
+      </div>
+
+      <!-- Copyright -->
+      <div class="menu-copyright">
+        Copyright 2026 KuncarCorp. All rights reserved.
+      </div>
+    </div>
+
+    <div id="menu" class="screen">
+      <!-- Animovany trailer canvas na pozadi -->
+      <canvas id="menu-bg" class="menu-bg"></canvas>
+
+      <div class="menu-hero">
+        <div class="logo">
+          <span class="logo-text">KNOCKFRIEND</span>
+        </div>
+        <div class="tagline">Multiplayer game with friends — 2-8 players</div>
+        <div class="online-stats">
+          <span class="stat-dot"></span>
+          <span id="online-count">— players online</span>
+        </div>
+      </div>
+
+      <div class="menu-card">
+        <!-- User info - zobrazi se kdyz je prihlaseny -->
+        <div id="user-info" class="user-info" style="display:none">
+          <div class="user-info-text">
+            Logged in as <span id="user-info-name" class="user-info-name">user</span>
+            <span id="user-info-admin" class="user-info-admin" style="display:none">ADMIN</span>
+            <span id="user-info-tester" class="user-info-tester" style="display:none">TESTER</span>
+          </div>
+          <button id="btn-logout" class="btn-link">Log out</button>
+        </div>
+
+        <!-- Guest pouze - input pro jmeno -->
+        <div id="guest-name-input">
+          <label>Your nickname</label>
+          <input id="name-input" type="text" maxlength="16" placeholder="Player" />
+        </div>
+
+        <button id="btn-quickplay" class="btn primary big">
+          <span class="btn-label">Quick Play</span>
+          <span class="btn-sub">Jump into a random match</span>
+        </button>
+
+        <div class="divider"><span>or</span></div>
+
+        <div class="action-grid">
+          <button id="btn-create" class="btn action-btn">
+            <span>Create Room</span>
+          </button>
+          <div class="join-group">
+            <input id="join-code" type="text" maxlength="5" placeholder="CODE" />
+            <button id="btn-join" class="btn action-btn">
+              <span>Join</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="rooms-section">
+          <div class="section-title">
+            <span>Open Rooms</span>
+            <button id="btn-refresh" class="btn-small">Refresh</button>
+          </div>
+          <div id="rooms-list" class="rooms-list"></div>
+        </div>
+      </div>
+
+      <div class="menu-footer">
+        <span class="kb-group"><span class="kb-label">Move</span> <kbd>A</kbd><kbd>D</kbd></span>
+        <span class="kb-group"><span class="kb-label">Jump</span> <kbd>W</kbd></span>
+        <span class="kb-group"><span class="kb-label">Aim</span> <kbd>Mouse</kbd></span>
+        <span class="kb-group"><span class="kb-label">Chat</span> <kbd>Z</kbd></span>
+        <span class="kb-group"><span class="kb-label">Console</span> <kbd>~</kbd></span>
+      </div>
+
+      <!-- Friends panel - vpravo, jen pro prihlasene -->
+      <div id="friends-panel" class="friends-panel" style="display:none">
+        <div class="friends-header">
+          <h3>Friends</h3>
+          <button id="btn-friends-refresh" class="btn-small" title="Refresh">↻</button>
+        </div>
+
+        <!-- Vyhledavani -->
+        <div class="friends-search">
+          <input id="friends-search-input" type="text" placeholder="Search players..." maxlength="16" />
+          <div id="friends-search-results" class="friends-search-results"></div>
+        </div>
+
+        <!-- Incoming requests -->
+        <div id="friends-incoming-section" class="friends-section" style="display:none">
+          <div class="friends-section-title">
+            Friend requests (<span id="friends-incoming-count">0</span>)
+          </div>
+          <div id="friends-incoming" class="friends-list"></div>
+        </div>
+
+        <!-- Friends list -->
+        <div class="friends-section">
+          <div class="friends-section-title">
+            Friends (<span id="friends-count">0</span>)
+          </div>
+          <div id="friends-list" class="friends-list"></div>
+        </div>
+
+        <!-- Outgoing requests -->
+        <div id="friends-outgoing-section" class="friends-section" style="display:none">
+          <div class="friends-section-title">
+            Pending (<span id="friends-outgoing-count">0</span>)
+          </div>
+          <div id="friends-outgoing" class="friends-list"></div>
+        </div>
+      </div>
+
+      <!-- Stats panel - vlevo -->
+      <div id="stats-panel" class="stats-panel">
+        <!-- Moje statistiky (jen pro prihlasene) -->
+        <div id="my-stats-section" class="stats-section" style="display:none">
+          <div class="stats-section-title">Your stats</div>
+          <div class="stat-row">
+            <span class="stat-label">Games</span>
+            <span id="stat-my-games" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Hours played</span>
+            <span id="stat-my-hours" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Kills</span>
+            <span id="stat-my-kills" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Wins</span>
+            <span id="stat-my-wins" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">K/D</span>
+            <span id="stat-my-kd" class="stat-value">0.00</span>
+          </div>
+        </div>
+
+        <!-- Globalni statistiky -->
+        <div class="stats-section">
+          <div class="stats-section-title">Global stats</div>
+          <div class="stat-row">
+            <span class="stat-label">Players</span>
+            <span id="stat-global-players" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Total games</span>
+            <span id="stat-global-games" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Total kills</span>
+            <span id="stat-global-kills" class="stat-value">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Total hours</span>
+            <span id="stat-global-hours" class="stat-value">0</span>
+          </div>
+        </div>
+
+        <!-- Leaderboard - top hraci -->
+        <div class="stats-section">
+          <div class="stats-section-title leaderboard-title">
+            <span>Leaderboard</span>
+            <select id="leaderboard-sort" class="leaderboard-sort">
+              <option value="kills">Kills</option>
+              <option value="wins">Wins</option>
+              <option value="games">Games</option>
+              <option value="hours">Hours</option>
+            </select>
+          </div>
+          <div id="leaderboard-list" class="leaderboard-list"></div>
+        </div>
+      </div>
+
+      <!-- Copyright -->
+      <div class="menu-copyright">
+        Copyright 2026 KuncarCorp. All rights reserved.
+      </div>
+    </div>
+
+    <!-- Settings tlacitko - vzdy viditelne v rohu -->
+    <button id="btn-open-settings" class="btn-settings" title="Settings">⚙</button>
+
+    <!-- Feedback button - vpravo dole, vzdy viditelny -->
+    <button id="btn-open-feedback" class="btn-feedback" title="Send feedback">
+      <span class="fb-label">FEEDBACK</span>
+    </button>
+
+    <!-- Feedback modal -->
+    <div id="feedback-modal" class="modal-overlay">
+      <div class="modal-card feedback-card">
+        <div class="modal-header">
+          <h2>SHARE YOUR FEEDBACK</h2>
+          <button id="btn-close-feedback" class="btn-icon">×</button>
+        </div>
+
+        <div class="modal-body">
+          <p class="feedback-intro">
+            Help us make KNOCKFRIEND better! Your feedback is appreciated. 🙌
+          </p>
+
+          <!-- Rating hvezdicky -->
+          <div class="feedback-section">
+            <label class="feedback-label">How much do you like the game?</label>
+            <div id="feedback-rating" class="rating-stars">
+              <span class="star" data-rating="1">★</span>
+              <span class="star" data-rating="2">★</span>
+              <span class="star" data-rating="3">★</span>
+              <span class="star" data-rating="4">★</span>
+              <span class="star" data-rating="5">★</span>
+            </div>
+            <div id="feedback-rating-text" class="rating-text"></div>
+          </div>
+
+          <!-- Co se libi -->
+          <div class="feedback-section">
+            <label class="feedback-label">What do you like the most? <span class="feedback-optional">(optional)</span></label>
+            <textarea id="feedback-likes" placeholder="The maps, weapons, friend system..." maxlength="500"></textarea>
+          </div>
+
+          <!-- Bugs -->
+          <div class="feedback-section">
+            <label class="feedback-label">Found any bugs? <span class="feedback-optional">(optional)</span></label>
+            <textarea id="feedback-bugs" placeholder="Describe what happened, on which device, etc..." maxlength="1000"></textarea>
+          </div>
+
+          <!-- Suggestions -->
+          <div class="feedback-section">
+            <label class="feedback-label">Ideas for improvement <span class="feedback-optional">(optional)</span></label>
+            <textarea id="feedback-suggestions" placeholder="New weapons, maps, features..." maxlength="1000"></textarea>
+          </div>
+
+          <div id="feedback-error" class="auth-error" style="display:none"></div>
+
+          <div class="settings-actions">
+            <button id="btn-submit-feedback" class="btn primary big">
+              <span class="btn-label">Send feedback</span>
+            </button>
+          </div>
+
+          <div id="feedback-success" class="feedback-success" style="display:none">
+            <div class="feedback-success-icon">OK</div>
+            <div>Thanks for your feedback!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settings-modal" class="modal-overlay">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h2>SETTINGS</h2>
+          <button id="btn-close-settings" class="modal-close">×</button>
+        </div>
+
+        <div class="settings-tabs">
+          <button class="settings-tab active" data-tab="keybinds">Keybinds</button>
+          <button class="settings-tab" data-tab="crosshair">Crosshair</button>
+        </div>
+
+        <!-- KEYBINDS TAB -->
+        <div class="settings-tab-content active" data-tab="keybinds">
+          <div class="keybinds-list">
+            <div class="keybind-row" data-action="left">
+              <span class="keybind-label">Move Left</span>
+              <button class="keybind-btn" data-action="left">A</button>
+            </div>
+            <div class="keybind-row" data-action="right">
+              <span class="keybind-label">Move Right</span>
+              <button class="keybind-btn" data-action="right">D</button>
+            </div>
+            <div class="keybind-row" data-action="jump">
+              <span class="keybind-label">Jump</span>
+              <button class="keybind-btn" data-action="jump">W</button>
+            </div>
+            <div class="keybind-row" data-action="chat">
+              <span class="keybind-label">Open Chat</span>
+              <button class="keybind-btn" data-action="chat">Z</button>
+            </div>
+            <div class="keybind-row" data-action="console">
+              <span class="keybind-label">Open Console</span>
+              <button class="keybind-btn" data-action="console">~</button>
+            </div>
+          </div>
+          <button id="btn-reset-keybinds" class="btn">Reset to defaults</button>
+        </div>
+
+        <!-- CROSSHAIR TAB -->
+        <div class="settings-tab-content" data-tab="crosshair">
+          <div class="crosshair-editor">
+            <div class="crosshair-preview-wrap">
+              <canvas id="crosshair-preview" width="240" height="240"></canvas>
+            </div>
+
+            <div class="crosshair-controls">
+              <div class="ctrl-row">
+                <label>Show crosshair</label>
+                <label class="toggle-switch">
+                  <input id="ch-enabled" type="checkbox" checked />
+                  <span class="toggle-slider"></span>
+                </label>
+              </div>
+
+              <div class="ctrl-row">
+                <label>Style</label>
+                <select id="ch-style">
+                  <option value="cross">Cross (CS-style)</option>
+                  <option value="dot">Dot only</option>
+                  <option value="circle">Circle</option>
+                  <option value="t-shape">T-shape</option>
+                </select>
+              </div>
+
+              <div class="ctrl-row">
+                <label>Color</label>
+                <input id="ch-color" type="color" value="#00ff00" />
+              </div>
+
+              <div class="ctrl-row">
+                <label>Size <span id="ch-size-val">8</span>px</label>
+                <input id="ch-size" type="range" min="2" max="30" value="8" />
+              </div>
+
+              <div class="ctrl-row">
+                <label>Gap <span id="ch-gap-val">4</span>px</label>
+                <input id="ch-gap" type="range" min="0" max="20" value="4" />
+              </div>
+
+              <div class="ctrl-row">
+                <label>Thickness <span id="ch-thickness-val">2</span>px</label>
+                <input id="ch-thickness" type="range" min="1" max="6" value="2" />
+              </div>
+
+              <div class="ctrl-row">
+                <label>
+                  <input id="ch-dot" type="checkbox" />
+                  Center dot
+                </label>
+              </div>
+
+              <div class="ctrl-row">
+                <label>
+                  <input id="ch-outline" type="checkbox" checked />
+                  Outline
+                </label>
+              </div>
+
+              <div class="ctrl-row">
+                <label>Outline opacity <span id="ch-outline-opacity-val">80</span>%</label>
+                <input id="ch-outline-opacity" type="range" min="20" max="100" value="80" />
+              </div>
+
+              <button id="btn-reset-crosshair" class="btn">Reset to defaults</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Akcni tlacitka -->
+        <div class="settings-actions">
+          <button id="btn-back-to-lobby" class="btn">← Back to Lobby</button>
+          <button id="btn-exit-to-menu" class="btn danger">EXIT</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="lobby" class="screen">
+      <div class="lobby-card">
+        <div class="lobby-header">
+          <div>
+            <div class="label">ROOM CODE</div>
+            <div id="lobby-code" class="lobby-code">-----</div>
+          </div>
+          <div>
+            <div class="label">MAP</div>
+            <select id="lobby-map">
+              <option value="skybridge">Skybridge</option>
+              <option value="pillars">Pillars</option>
+              <option value="chasm">Chasm</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="lobby-settings">
+          <div class="setting-row">
+            <div class="setting-label">YOUR COLOR</div>
+            <div class="color-picker" id="color-picker">
+              <!-- Tlacitka generujeme z JS -->
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
+              ROUNDS TO WIN
+              <span id="host-only-tag-1" class="host-tag">Host only</span>
+            </div>
+            <div class="win-buttons" id="win-buttons">
+              <button class="win-btn" data-wins="1">1</button>
+              <button class="win-btn" data-wins="2">2</button>
+              <button class="win-btn active" data-wins="3">3</button>
+              <button class="win-btn" data-wins="5">5</button>
+              <button class="win-btn" data-wins="7">7</button>
+              <button class="win-btn" data-wins="10">10</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
+              PHONE ONLY MODE
+              <span id="host-only-tag-2" class="host-tag">Host only</span>
+            </div>
+            <button id="phone-only-toggle" class="toggle-btn">
+              <span class="toggle-state">OFF</span>
+              <span class="toggle-hint">Allow only mobile players</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="section-title">Players</div>
+        <div id="lobby-players" class="lobby-players"></div>
+
+        <div class="lobby-actions">
+          <button id="btn-leave" class="btn">Leave</button>
+          <button id="btn-ready" class="btn primary">Ready</button>
+        </div>
+
+        <div class="lobby-hint">
+          First to <span id="lobby-win-score">3</span> round wins takes the match.
+          Last player standing wins each round.
+        </div>
+
+        <div class="chat-box">
+          <div class="section-title">Chat</div>
+          <div id="lobby-chat-log" class="chat-log"></div>
+          <div class="chat-input-row">
+            <input id="lobby-chat-input" type="text" maxlength="100" placeholder="Type a message..." />
+            <button id="lobby-chat-send" class="btn-small">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="game" class="screen">
+      <canvas id="canvas"></canvas>
+      <div id="hud" class="hud">
+        <div id="round-info" class="round-info"></div>
+        <div id="scoreboard" class="scoreboard"></div>
+        <div id="weapon-info" class="weapon-info"></div>
+        <div id="phase-banner" class="phase-banner"></div>
+        <div id="killfeed" class="killfeed"></div>
+
+        <!-- MOBILNI OVLADANI - skrytý na desktopu, viditelný na mobilu -->
+        <div id="mobile-controls" class="mobile-controls">
+          <!-- Leva strana: pohybovy joystick (nahoru = skok) -->
+          <div class="mobile-left">
+            <div class="move-joystick" id="move-joystick">
+              <div class="move-joystick-base"></div>
+              <div class="move-joystick-stick" id="move-joystick-stick"></div>
+              <div class="move-joystick-hint">MOVE / JUMP ↑</div>
+            </div>
+          </div>
+
+          <!-- Prava strana: aim joystick (tahni palcem - hra strili) -->
+          <div class="mobile-right">
+            <div class="aim-joystick" id="aim-joystick">
+              <div class="aim-joystick-base"></div>
+              <div class="aim-joystick-stick" id="aim-joystick-stick"></div>
+              <div class="aim-joystick-hint">AIM &amp; SHOOT</div>
+            </div>
+          </div>
+
+          <!-- Vrchni rohove tlacitka -->
+          <div class="mobile-top-buttons">
+            <button class="mbtn-icon" id="mbtn-fullscreen" title="Fullscreen">⛶</button>
+            <button class="mbtn-icon" id="mbtn-tab" title="Scoreboard">📊</button>
+            <button class="mbtn-icon" id="mbtn-chat" title="Chat">💬</button>
+          </div>
+
+          <!-- Minimapa - jen pro mobil (vyhoda) -->
+          <canvas id="minimap" class="minimap" width="200" height="100"></canvas>
+        </div>
+
+        <div id="game-chat" class="game-chat">
+          <div id="game-chat-log" class="game-chat-log"></div>
+          <div id="game-chat-input-wrap" class="game-chat-input-wrap">
+            <input id="game-chat-input" type="text" maxlength="100" placeholder="Press Z to chat, Enter to send, Esc to cancel" />
+          </div>
+        </div>
+
+        <!-- Rozsirena tabulka (Tab pro zobrazeni) -->
+        <div id="tab-scoreboard" class="tab-scoreboard">
+          <div class="tab-header">
+            <h2>SCOREBOARD</h2>
+            <div class="tab-meta">
+              <span class="tab-round-info" id="tab-round-info">Round 1</span>
+              <span class="tab-map-info" id="tab-map-info">Skybridge</span>
+            </div>
+          </div>
+          <table class="tab-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Player</th>
+                <th>Wins</th>
+                <th>Kills</th>
+                <th>Deaths</th>
+                <th>K/D</th>
+                <th>Ping</th>
+              </tr>
+            </thead>
+            <tbody id="tab-tbody"></tbody>
+          </table>
+          <div class="tab-footer">
+            Hold <kbd>TAB</kbd> to view
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Konzole - dostupna i v lobby i ve hre -->
+  <div id="console" class="console">
+    <div class="console-header">
+      <span>CONSOLE</span>
+      <span class="console-hint">~ to close · type 'help'</span>
+    </div>
+    <div id="console-log" class="console-log"></div>
+    <div class="console-input-row">
+      <span class="console-prompt">&gt;</span>
+      <input id="console-input" type="text" maxlength="200" placeholder="type a command..." autocomplete="off" />
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
