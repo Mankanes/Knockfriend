@@ -3126,3 +3126,18 @@ body:has(#game.screen.active) .btn-feedback {
   80% { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
   100% { transform: translateX(-50%) translateY(-20px) scale(0.95); opacity: 0; }
 }
+
+/* ======================= AUDIO SETTINGS ======================= */
+.audio-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ctrl-row.range-row {
+  padding: 0;
+}
+.ctrl-row.range-row input[type="range"] {
+  width: 100%;
+  margin: 0;
+}

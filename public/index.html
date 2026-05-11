@@ -345,6 +345,7 @@
         <div class="settings-tabs">
           <button class="settings-tab active" data-tab="keybinds">Keybinds</button>
           <button class="settings-tab" data-tab="crosshair">Crosshair</button>
+          <button class="settings-tab" data-tab="audio">Audio</button>
         </div>
 
         <!-- KEYBINDS TAB -->
@@ -441,6 +442,47 @@
 
               <button id="btn-reset-crosshair" class="btn">Reset to defaults</button>
             </div>
+          </div>
+        </div>
+
+        <!-- AUDIO TAB -->
+        <div class="settings-tab-content" data-tab="audio">
+          <div class="audio-controls">
+            <div class="ctrl-row">
+              <label>Music</label>
+              <label class="toggle-switch">
+                <input id="audio-music-enabled" type="checkbox" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="ctrl-row">
+              <label>Music volume</label>
+              <span id="audio-music-volume-val">50</span>%
+            </div>
+            <div class="ctrl-row range-row">
+              <input id="audio-music-volume" type="range" min="0" max="100" value="50" />
+            </div>
+
+            <div class="ctrl-row">
+              <label>SFX</label>
+              <label class="toggle-switch">
+                <input id="audio-sfx-enabled" type="checkbox" checked />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+
+            <div class="ctrl-row">
+              <label>SFX volume</label>
+              <span id="audio-sfx-volume-val">70</span>%
+            </div>
+            <div class="ctrl-row range-row">
+              <input id="audio-sfx-volume" type="range" min="0" max="100" value="70" />
+            </div>
+
+            <p style="color:#5a6a90;font-size:11px;margin-top:14px;line-height:1.5">
+              Note: On iPhone/iPad, music starts only after you tap or click somewhere on the page (browser limitation).
+            </p>
           </div>
         </div>
 
@@ -618,6 +660,14 @@
       <input id="console-input" type="text" maxlength="200" placeholder="type a command..." autocomplete="off" />
     </div>
   </div>
+
+  <!-- Audio - menu hudba (loop) -->
+  <audio id="bgm-menu" loop preload="auto">
+    <source src="/music/menu.mp3" type="audio/mpeg" />
+  </audio>
+  <audio id="bgm-game" loop preload="auto">
+    <source src="/music/game.mp3" type="audio/mpeg" />
+  </audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="game.js"></script>

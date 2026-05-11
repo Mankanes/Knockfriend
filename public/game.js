@@ -525,6 +525,155 @@
     sortSelect.onchange = refreshLeaderboard;
   }
 
+  // ---------- AUDIO SYSTEM ----------
+  const bgmMenu = document.getElementById("bgm-menu");
+  const bgmGame = document.getElementById("bgm-game");
+
+  // Default audio settings (saved in localStorage)
+  const DEFAULT_AUDIO = {
+    musicEnabled: true,
+    musicVolume: 50,  // 0-100
+    sfxEnabled: true,
+    sfxVolume: 70,
+  };
+  const audioSettings = { ...DEFAULT_AUDIO };
+
+  function loadAudioSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem("kf_audio") || "{}");
+      Object.assign(audioSettings, saved);
+    } catch (err) {}
+  }
+  function saveAudioSettings() {
+    localStorage.setItem("kf_audio", JSON.stringify(audioSettings));
+  }
+  loadAudioSettings();
+
+  // Aplikuj volume na audio elementy
+  function applyAudioVolume() {
+    const vol = audioSettings.musicEnabled ? audioSettings.musicVolume / 100 : 0;
+    if (bgmMenu) bgmMenu.volume = vol;
+    if (bgmGame) bgmGame.volume = vol;
+  }
+  applyAudioVolume();
+
+  // Prehrava jednu hudbu (menu nebo game), druhou pauzne
+  let currentBgm = null;
+  let audioUnlocked = false;
+  function playBgm(which) {
+    if (!audioSettings.musicEnabled) return;
+    const target = which === "game" ? bgmGame : bgmMenu;
+    const other = which === "game" ? bgmMenu : bgmGame;
+    if (!target) return;
+    // Pauzni druhou hudbu
+    if (other && !other.paused) {
+      other.pause();
+    }
+    if (currentBgm === target && !target.paused) return;
+    currentBgm = target;
+    target.play().catch(() => {
+      // Autoplay blocked (chrome/ios) - cekaji na user interaction
+    });
+  }
+  function stopBgm() {
+    if (bgmMenu) bgmMenu.pause();
+    if (bgmGame) bgmGame.pause();
+    currentBgm = null;
+  }
+
+  // Mobile/iOS workaround: autoplay je zablokovany, music spustime az po prvnim kliku
+  function unlockAudio() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    // Zkusit spustit menu hudbu (pokud jsme v menu)
+    if (screens.menu?.classList.contains("active") || screens.auth?.classList.contains("active")) {
+      playBgm("menu");
+    } else if (screens.game?.classList.contains("active")) {
+      playBgm("game");
+    }
+  }
+  // Listener na prvni interakci
+  ["click", "touchstart", "keydown"].forEach((evt) => {
+    document.addEventListener(evt, unlockAudio, { once: true, capture: true });
+  });
+
+  // Hook na prepnuti screen - prepni hudbu
+  const originalShowScreen = showScreen;
+  showScreen = function(name) {
+    originalShowScreen(name);
+    if (!audioSettings.musicEnabled) {
+      stopBgm();
+      return;
+    }
+    if (name === "game") {
+      playBgm("game");
+    } else if (name === "menu" || name === "lobby" || name === "auth") {
+      playBgm("menu");
+    }
+  };
+
+  // Audio settings UI
+  const audioMusicEnabled = document.getElementById("audio-music-enabled");
+  const audioMusicVolume = document.getElementById("audio-music-volume");
+  const audioMusicVolumeVal = document.getElementById("audio-music-volume-val");
+  const audioSfxEnabled = document.getElementById("audio-sfx-enabled");
+  const audioSfxVolume = document.getElementById("audio-sfx-volume");
+  const audioSfxVolumeVal = document.getElementById("audio-sfx-volume-val");
+
+  function refreshAudioUI() {
+    if (audioMusicEnabled) audioMusicEnabled.checked = audioSettings.musicEnabled;
+    if (audioMusicVolume) audioMusicVolume.value = audioSettings.musicVolume;
+    if (audioMusicVolumeVal) audioMusicVolumeVal.textContent = audioSettings.musicVolume;
+    if (audioSfxEnabled) audioSfxEnabled.checked = audioSettings.sfxEnabled;
+    if (audioSfxVolume) audioSfxVolume.value = audioSettings.sfxVolume;
+    if (audioSfxVolumeVal) audioSfxVolumeVal.textContent = audioSettings.sfxVolume;
+  }
+  refreshAudioUI();
+
+  if (audioMusicEnabled) {
+    audioMusicEnabled.onchange = () => {
+      audioSettings.musicEnabled = audioMusicEnabled.checked;
+      saveAudioSettings();
+      applyAudioVolume();
+      if (!audioSettings.musicEnabled) {
+        stopBgm();
+      } else {
+        // Restart hudbu podle aktualni screen
+        if (screens.game?.classList.contains("active")) playBgm("game");
+        else playBgm("menu");
+      }
+    };
+  }
+  if (audioMusicVolume) {
+    audioMusicVolume.oninput = () => {
+      audioSettings.musicVolume = parseInt(audioMusicVolume.value);
+      audioMusicVolumeVal.textContent = audioSettings.musicVolume;
+      saveAudioSettings();
+      applyAudioVolume();
+    };
+  }
+  if (audioSfxEnabled) {
+    audioSfxEnabled.onchange = () => {
+      audioSettings.sfxEnabled = audioSfxEnabled.checked;
+      saveAudioSettings();
+    };
+  }
+  if (audioSfxVolume) {
+    audioSfxVolume.oninput = () => {
+      audioSettings.sfxVolume = parseInt(audioSfxVolume.value);
+      audioSfxVolumeVal.textContent = audioSettings.sfxVolume;
+      saveAudioSettings();
+    };
+  }
+
+  // Helper pro SFX (volat: playSfx("kill"))
+  // Pokud nemaš zatím SFX soubory, tato fce jen vypise warning kdyz je sfx volana
+  // ale music tab v Settings funguje pro budoucnost
+  window.playSfx = function(name) {
+    if (!audioSettings.sfxEnabled) return;
+    // TODO: pridat skutecne SFX soubory v public/sfx/<name>.mp3
+  };
+
   // ---------- FEEDBACK MODAL ----------
   const feedbackBtn = document.getElementById("btn-open-feedback");
   const feedbackModal = document.getElementById("feedback-modal");

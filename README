@@ -48,3 +48,22 @@ Všechny herní hodnoty (gravitace, výška skoku, zbraně, layout map, knockbac
 ## StackBlitz
 
 Vytvoř **Node.js** šablonu (ne Vite/React). Smaž defaultní `index.js` v rootu. Vytvoř strukturu `server/` a `public/` jak je nahoře, nakopíruj soubory. StackBlitz si automaticky pustí `npm install` a `npm start`.
+# Music files
+
+Vlož sem hudbu jako MP3 soubory:
+
+- `menu.mp3` — hudba pro hlavní menu, lobby, auth screen (loop)
+- `game.mp3` — hudba pro hru (loop)
+
+## Doporučení
+- **Formát**: MP3 (nejlepší kompatibilita)
+- **Velikost**: ideálně < 5 MB na soubor (rychlejší načítání)
+- **Délka**: 1-3 minuty (loopuje se automaticky)
+- **Royalty-free** zdroje:
+  - https://pixabay.com/music/ (zdarma, žádné atribuce)
+  - https://freesound.org/ (zdarma, někdy atribuce)
+  - https://incompetech.com/ (Kevin MacLeod, atribuce)
+
+## Když nemáš oba soubory
+Pokud chybí `game.mp3`, hra ve hře nebude hrát hudbu (ale menu hudba bude OK pokud má `menu.mp3`).
+Můžeš taky nahrát stejný soubor 2× s různými jmény.
