@@ -20,6 +20,8 @@
   };
   function showScreen(name) {
     for (const k in screens) screens[k].classList.toggle("active", k === name);
+    // Nastav data-screen na body pro CSS selektory
+    document.body.setAttribute("data-screen", name);
     // Feedback tlacitko - viditelne jen mimo hru (menu, lobby, auth)
     const fbBtn = document.getElementById("btn-open-feedback");
     if (fbBtn) {
@@ -487,13 +489,21 @@
 
   // Skry mobile toggle tlacitka v relevantnich screenech (jen menu + lobby)
   function updateMobileToggleVisibility(screenName) {
-    const show = (screenName === "menu" || screenName === "lobby");
-    if (btnToggleStats) btnToggleStats.style.display = show ? "inline-block" : "none";
+    // CSS automaticky zobrazi/skryje tlacitka podle data-screen (max-width 900px a menu/lobby)
+    // JS je tu jen pro pripad ze friends tlacitko ma byt skryto kdyz user neni prihlasen
     if (btnToggleFriends) {
-      btnToggleFriends.style.display = (show && currentUser) ? "inline-block" : "none";
+      // Pokud user neni prihlasen, schovej friends tlacitko i kdyz CSS ho ukazuje
+      btnToggleFriends.style.visibility = currentUser ? "visible" : "hidden";
     }
+    const show = (screenName === "menu" || screenName === "lobby");
     if (!show) closeAllMobilePanels();
   }
+
+  // Pri resizu (orientacni zmena, otoceni tabletu) aktualizovat viditelnost
+  window.addEventListener("resize", () => {
+    const activeScreen = Object.keys(screens).find(k => screens[k].classList.contains("active")) || "auth";
+    updateMobileToggleVisibility(activeScreen);
+  });
 
   // Update friends mobile badge (count of unread DMs + pending requests)
   function updateMobileFriendsBadge(unreadDM, incoming) {

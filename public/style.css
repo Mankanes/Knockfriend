@@ -3471,9 +3471,10 @@ body:has(#game.screen.active) .btn-feedback {
   min-width: 14px;
 }
 
-/* Zobrazit tlacitka na mobilu */
+/* Zobrazit tlacitka jen na mobilu, jen v menu/lobby (ne na auth/game) */
 @media (max-width: 900px) {
-  .btn-mobile-toggle {
+  body[data-screen="menu"] .btn-mobile-toggle,
+  body[data-screen="lobby"] .btn-mobile-toggle {
     display: inline-block;
   }
 }
