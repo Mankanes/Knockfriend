@@ -158,6 +158,8 @@
       }
       // Refresh stats (zobrazi moje stats sekci)
       if (typeof refreshStats === "function") refreshStats();
+      // Refresh DM unread counts
+      if (typeof refreshDMUnread === "function") refreshDMUnread();
     } else {
       userInfo.style.display = "none";
       guestNameInput.style.display = "block";
@@ -288,7 +290,16 @@
 
     let actionsHtml = "";
     if (type === "friend") {
-      actionsHtml = `<button class="friend-btn remove" data-action="remove" data-user="${escapeHtml(user.username)}">REMOVE</button>`;
+      // CHAT button - vzdy
+      let parts = [`<button class="friend-btn chat" data-action="chat" data-user="${escapeHtml(user.username)}" title="Send message">CHAT</button>`];
+      // INVITE button - jen pokud jsem v lobby a friend je online a NENI uz v me lobby
+      const myRoomId = currentRoomId;
+      const friendInMyRoom = user.currentRoom && user.currentRoom === myRoomId;
+      if (myRoomId && user.isOnline && !friendInMyRoom) {
+        parts.push(`<button class="friend-btn invite" data-action="invite" data-user="${escapeHtml(user.username)}" title="Invite to lobby">INVITE</button>`);
+      }
+      parts.push(`<button class="friend-btn remove" data-action="remove" data-user="${escapeHtml(user.username)}" title="Remove">X</button>`);
+      actionsHtml = parts.join("");
     } else if (type === "incoming") {
       actionsHtml = `
         <button class="friend-btn accept" data-action="accept" data-user="${escapeHtml(user.username)}">ACCEPT</button>
@@ -298,28 +309,49 @@
       actionsHtml = `<button class="friend-btn remove" data-action="remove" data-user="${escapeHtml(user.username)}">REMOVE</button>`;
     }
 
+    // Unread badge pro DM
+    const unread = dmUnread[user.username] || 0;
+    const unreadHtml = unread > 0 ? `<span class="friend-unread">${unread}</span>` : '';
+
     row.innerHTML = `
       <div class="${dotClass}"></div>
-      <div class="friend-name${nameClass}">${namePrefix}${escapeHtml(user.username)}</div>
+      <div class="friend-name${nameClass}">${namePrefix}${escapeHtml(user.username)}${unreadHtml}</div>
       <div class="friend-actions">${actionsHtml}</div>
     `;
 
     // Bind actions
     row.querySelectorAll(".friend-btn").forEach((btn) => {
-      btn.onclick = async () => {
+      btn.onclick = async (e) => {
+        e.stopPropagation();
         const action = btn.getAttribute("data-action");
         const username = btn.getAttribute("data-user");
         if (action === "accept") {
           await apiCall("/api/friends/accept", { username });
+          refreshFriendsList();
         } else if (action === "remove") {
+          if (type === "friend" && !confirm("Remove " + username + " from friends?")) return;
           await apiCall("/api/friends/remove", { username });
+          refreshFriendsList();
+        } else if (action === "chat") {
+          openDMChat(username);
+        } else if (action === "invite") {
+          const result = await apiCall("/api/friends/invite", { username, roomId: currentRoomId });
+          if (result.ok) {
+            showXPNotification("INVITE", "Sent to " + username);
+          } else {
+            showXPNotification("FAIL", result.error || "Could not invite");
+          }
         }
-        refreshFriendsList();
       };
     });
 
     return row;
   }
+
+  // Currentni roomId - update se z lobby
+  let currentRoomId = null;
+  // DM unread cache: { username: count }
+  let dmUnread = {};
 
   // Search input
   const searchInput = document.getElementById("friends-search-input");
@@ -385,6 +417,176 @@
       refreshFriendsList();
     }
   }, 15000);
+
+  // ---------- DM CHAT ----------
+  const dmChatEl = document.getElementById("dm-chat");
+  const dmChatTitleEl = document.getElementById("dm-chat-title");
+  const dmChatStatusEl = document.getElementById("dm-chat-status");
+  const dmChatMessagesEl = document.getElementById("dm-chat-messages");
+  const dmChatInputEl = document.getElementById("dm-chat-input");
+  const dmChatSendBtn = document.getElementById("dm-chat-send");
+  const dmChatCloseBtn = document.getElementById("dm-chat-close");
+  let dmActiveWith = null; // s kym aktualne chatujem
+
+  async function openDMChat(username) {
+    if (!currentUser) return;
+    dmActiveWith = username;
+    dmChatTitleEl.textContent = username;
+    dmChatEl.style.display = "flex";
+    dmChatMessagesEl.innerHTML = '<div class="dm-chat-empty">Loading...</div>';
+    // Status online
+    dmChatStatusEl.className = "dm-chat-status-dot"; // reset
+    // Fetch historie
+    const data = await apiCall("/api/dm/history", { with: username });
+    dmChatMessagesEl.innerHTML = "";
+    if (!data.ok || data.messages.length === 0) {
+      dmChatMessagesEl.innerHTML = '<div class="dm-chat-empty">No messages yet. Start the conversation!</div>';
+    } else {
+      for (const m of data.messages) {
+        appendDMMessage(m);
+      }
+      dmChatMessagesEl.scrollTop = dmChatMessagesEl.scrollHeight;
+    }
+    // Reset unread count pro tohoto frienda
+    dmUnread[username] = 0;
+    refreshFriendsList(); // schova badge
+    // Focus
+    setTimeout(() => dmChatInputEl.focus(), 100);
+  }
+
+  function closeDMChat() {
+    dmChatEl.style.display = "none";
+    dmActiveWith = null;
+  }
+  if (dmChatCloseBtn) dmChatCloseBtn.onclick = closeDMChat;
+
+  function appendDMMessage(msg) {
+    // Pokud je to prvni zprava, vyprazdni "empty"
+    if (dmChatMessagesEl.querySelector(".dm-chat-empty")) {
+      dmChatMessagesEl.innerHTML = "";
+    }
+    const isOut = msg.from === currentUser?.username;
+    const div = document.createElement("div");
+    div.className = "dm-msg " + (isOut ? "out" : "in");
+    const time = new Date(msg.time);
+    const timeStr = time.getHours().toString().padStart(2, "0") + ":" + time.getMinutes().toString().padStart(2, "0");
+    div.innerHTML = `${escapeHtml(msg.text)}<div class="dm-msg-time">${timeStr}</div>`;
+    dmChatMessagesEl.appendChild(div);
+    dmChatMessagesEl.scrollTop = dmChatMessagesEl.scrollHeight;
+  }
+
+  async function sendDM() {
+    if (!dmActiveWith) return;
+    const text = dmChatInputEl.value.trim();
+    if (!text) return;
+    dmChatInputEl.value = "";
+    const result = await apiCall("/api/dm/send", { to: dmActiveWith, text });
+    if (!result.ok) {
+      // Failed - put text back
+      dmChatInputEl.value = text;
+    }
+    // Zprava se prida pres dm_sent event nize
+  }
+  if (dmChatSendBtn) dmChatSendBtn.onclick = sendDM;
+  if (dmChatInputEl) {
+    dmChatInputEl.addEventListener("keydown", (e) => {
+      e.stopPropagation(); // aby nesahalo do herni klavesnice
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendDM();
+      }
+    });
+  }
+
+  // Socket listeners pro DM
+  socket.on("dm_received", (msg) => {
+    // Pokud mas otevreny chat s odesilatelem, hned prida zpravu
+    if (dmActiveWith === msg.from) {
+      appendDMMessage(msg);
+      // Mark as read - server uz to udela pri /api/dm/history pri otevreni
+    } else {
+      // Jinak inc unread count + zobraz notifikaci
+      dmUnread[msg.from] = (dmUnread[msg.from] || 0) + 1;
+      refreshFriendsList();
+      showXPNotification("MSG", msg.from + ": " + msg.text.slice(0, 30));
+    }
+  });
+  socket.on("dm_sent", (msg) => {
+    // Pokud mam otevreny chat, hned prida
+    if (dmActiveWith === msg.to) {
+      appendDMMessage(msg);
+    }
+  });
+
+  // Refresh unread badges periodicky (pro pripad ze nejaka zprava nepřišla pres socket)
+  async function refreshDMUnread() {
+    if (!currentUser) return;
+    const data = await apiCall("/api/dm/unread", {});
+    if (data.ok) {
+      dmUnread = data.unread || {};
+    }
+  }
+  setInterval(refreshDMUnread, 30000);
+
+  // ---------- LOBBY INVITE ----------
+  const inviteNotifEl = document.getElementById("invite-notif");
+  const inviteFromEl = document.getElementById("invite-from");
+  const inviteAcceptBtn = document.getElementById("invite-accept");
+  const inviteDeclineBtn = document.getElementById("invite-decline");
+  let pendingInviteRoomId = null;
+  let inviteTimer = null;
+
+  socket.on("lobby_invite", (data) => {
+    if (!data || !data.from || !data.roomId) return;
+    pendingInviteRoomId = data.roomId;
+    inviteFromEl.textContent = data.from;
+    inviteNotifEl.style.display = "flex";
+    // Auto-dismiss po 30s
+    if (inviteTimer) clearTimeout(inviteTimer);
+    inviteTimer = setTimeout(() => {
+      inviteNotifEl.style.display = "none";
+      pendingInviteRoomId = null;
+    }, 30000);
+  });
+
+  if (inviteAcceptBtn) {
+    inviteAcceptBtn.onclick = () => {
+      if (!pendingInviteRoomId) return;
+      const targetRoom = pendingInviteRoomId;
+      inviteNotifEl.style.display = "none";
+      pendingInviteRoomId = null;
+      // Pokud jsem v lobby, opust ji nejdriv
+      if (currentRoomId) {
+        socket.emit("leave_room");
+        currentRoomId = null;
+      }
+      // Pripoj se do nove
+      const name = currentUser?.username || nameInput?.value || "Guest";
+      socket.emit("join_room", { roomId: targetRoom, name }, (resp) => {
+        if (!resp.ok) {
+          alert(resp.error || "Could not join lobby");
+          showScreen("menu");
+          return;
+        }
+        roomId = resp.roomId;
+        currentRoomId = resp.roomId;
+        selfId = resp.selfId;
+        SHARED = resp.shared;
+        clearChatLogs();
+        document.getElementById("lobby-code").textContent = roomId;
+        document.getElementById("lobby-map").value = resp.mapKey;
+        document.getElementById("lobby-win-score").textContent = SHARED.ROUND.MATCH_WIN_SCORE;
+        showScreen("lobby");
+      });
+    };
+  }
+  if (inviteDeclineBtn) {
+    inviteDeclineBtn.onclick = () => {
+      inviteNotifEl.style.display = "none";
+      pendingInviteRoomId = null;
+      if (inviteTimer) clearTimeout(inviteTimer);
+    };
+  }
 
   // ---------- STATS PANEL ----------
   function formatHours(ms) {
@@ -1391,6 +1593,7 @@
       return;
     }
     roomId = resp.roomId;
+    currentRoomId = resp.roomId;
     selfId = resp.selfId;
     SHARED = resp.shared;
     clearChatLogs();
@@ -1464,6 +1667,7 @@
     socket.emit("leave_room");
     isReady = false;
     userPreferLobby = false;
+    currentRoomId = null;
     clearChatLogs();
     showScreen("menu");
     refreshRooms();

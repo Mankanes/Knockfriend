@@ -669,6 +669,29 @@
     <source src="/music/game.mp3" type="audio/mpeg" />
   </audio>
 
+  <!-- DM Chat widget (pop-up vpravo dole) -->
+  <div id="dm-chat" class="dm-chat" style="display:none">
+    <div class="dm-chat-header">
+      <span id="dm-chat-status" class="dm-chat-status-dot"></span>
+      <span id="dm-chat-title">Chat</span>
+      <button id="dm-chat-close" class="dm-chat-btn">X</button>
+    </div>
+    <div id="dm-chat-messages" class="dm-chat-messages"></div>
+    <div class="dm-chat-input-row">
+      <input id="dm-chat-input" type="text" maxlength="500" placeholder="Type a message..." />
+      <button id="dm-chat-send" class="dm-chat-send">SEND</button>
+    </div>
+  </div>
+
+  <!-- Invite notifikace -->
+  <div id="invite-notif" class="invite-notif" style="display:none">
+    <div class="invite-text"><span id="invite-from"></span> invited you to a lobby</div>
+    <div class="invite-actions">
+      <button id="invite-accept" class="btn primary small">JOIN</button>
+      <button id="invite-decline" class="btn small">DISMISS</button>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="game.js"></script>
 </body>

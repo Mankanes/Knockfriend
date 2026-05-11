@@ -1104,6 +1104,7 @@ let mongoClient = null;
 let mongoUsers = null; // collection
 let mongoFriends = null; // collection pro pratele
 let mongoFeedback = null; // collection pro feedback
+let mongoDM = null; // collection pro direct messages
 let mongoEnabled = false;
 
 // Friends file fallback - jednoduchy JSON file
@@ -1113,6 +1114,10 @@ let friendsData = []; // [{ from, to, status, createdAt, acceptedAt }]
 // Feedback file fallback
 const FEEDBACK_FILE = path.join(__dirname, "..", "data", "feedback.json");
 let feedbackData = []; // [{ username, rating, bugs, suggestions, likes, createdAt }]
+
+// DM file fallback
+const DM_FILE = path.join(__dirname, "..", "data", "dm.json");
+let dmData = []; // [{ from, to, text, time, read }]
 
 function loadFriendsFile() {
   try {
@@ -1148,6 +1153,23 @@ function saveFeedbackFile() {
   }
 }
 
+function loadDMFile() {
+  try {
+    if (fs.existsSync(DM_FILE)) {
+      dmData = JSON.parse(fs.readFileSync(DM_FILE, "utf8"));
+    }
+  } catch (err) {
+    dmData = [];
+  }
+}
+function saveDMFile() {
+  try {
+    fs.writeFileSync(DM_FILE, JSON.stringify(dmData, null, 2), "utf8");
+  } catch (err) {
+    console.error("[DM] Save error:", err.message);
+  }
+}
+
 async function initMongo() {
   if (!MONGODB_URI) {
     console.log("[DB] MONGODB_URI neni nastaveny - pouzije se file storage");
@@ -1166,6 +1188,7 @@ async function initMongo() {
     mongoUsers = db.collection("users");
     mongoFriends = db.collection("friends");
     mongoFeedback = db.collection("feedback");
+    mongoDM = db.collection("dm");
     // Vytvor unique index na username (pokud jeste neni)
     await mongoUsers.createIndex({ username: 1 }, { unique: true });
     // Index pro friends - rychle dotazy na from/to
@@ -1174,6 +1197,9 @@ async function initMongo() {
     await mongoFriends.createIndex({ from: 1, status: 1 });
     // Index pro feedback - sort podle data
     await mongoFeedback.createIndex({ createdAt: -1 });
+    // Index pro DM - rychle dotazy podle conversation pair
+    await mongoDM.createIndex({ from: 1, to: 1, time: 1 });
+    await mongoDM.createIndex({ to: 1, read: 1 });
     mongoEnabled = true;
     console.log("[DB] MongoDB pripojena uspesne");
   } catch (err) {
@@ -1442,6 +1468,7 @@ function promoteToTester(username, providedPassword) {
   await loadUsers();
   loadFriendsFile(); // file fallback pro pratele
   loadFeedbackFile(); // file fallback pro feedback
+  loadDMFile(); // file fallback pro DM
 })();
 
 // Zpetna kompatibilita - admin token system jeste zustava pro chat /login prikaz
@@ -1942,6 +1969,7 @@ app.post("/api/friends/list", async (req, res) => {
       isOnline: isUserOnline(other),
       isAdmin: !!(otherUser?.isAdmin),
       isTester: !!(otherUser?.isTester),
+      currentRoom: getUserCurrentRoom(other), // v jake lobby je
     };
     if (f.status === "accepted") {
       friends.push(meta);
@@ -1962,6 +1990,215 @@ function isUserOnline(username) {
   }
   return false;
 }
+
+// Vrati roomId ve kterem uzivatel hraje, nebo null
+function getUserCurrentRoom(username) {
+  for (const [id, sock] of io.sockets.sockets) {
+    if (sock.data?.username === username) {
+      const roomId = socketRoom.get(id);
+      if (roomId && rooms.has(roomId)) {
+        const room = rooms.get(roomId);
+        // Vrati jen pokud je room otevreny (lobby/postround) - ne pendle hry
+        if (room.game.phase === "lobby" || room.game.phase === "postround") {
+          return roomId;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// Posli pozvanku do lobby pres socket
+app.post("/api/friends/invite", async (req, res) => {
+  const session = requireAuth(req, res);
+  if (!session) return;
+  const targetUsername = (req.body?.username || "").toString().trim();
+  const roomId = (req.body?.roomId || "").toString().trim();
+  if (!targetUsername || !roomId) {
+    res.json({ ok: false, error: "Invalid request" });
+    return;
+  }
+  if (!rooms.has(roomId)) {
+    res.json({ ok: false, error: "Room not found" });
+    return;
+  }
+  // Zkontroluj zda jsou pratele
+  let areFriends = false;
+  if (mongoEnabled && mongoFriends) {
+    try {
+      const f = await mongoFriends.findOne({
+        status: "accepted",
+        $or: [
+          { from: session.username, to: targetUsername },
+          { from: targetUsername, to: session.username },
+        ],
+      });
+      areFriends = !!f;
+    } catch (err) {}
+  } else {
+    areFriends = friendsData.some((f) =>
+      f.status === "accepted" &&
+      ((f.from === session.username && f.to === targetUsername) ||
+       (f.from === targetUsername && f.to === session.username))
+    );
+  }
+  if (!areFriends) {
+    res.json({ ok: false, error: "Not friends" });
+    return;
+  }
+  if (!isUserOnline(targetUsername)) {
+    res.json({ ok: false, error: "User offline" });
+    return;
+  }
+  // Emit invite do vsech socketu daneho uzivatele
+  emitToUser(targetUsername, "lobby_invite", {
+    from: session.username,
+    roomId,
+    timestamp: Date.now(),
+  });
+  res.json({ ok: true });
+});
+
+// ============================================================
+// DM (DIRECT MESSAGES) API
+// ============================================================
+// Format zpravy v Mongo:
+// { from, to, text, time, read }
+
+// Posli DM (pres HTTP, vraci ulozenou zpravu)
+app.post("/api/dm/send", async (req, res) => {
+  const session = requireAuth(req, res);
+  if (!session) return;
+  const target = (req.body?.to || "").toString().trim();
+  const text = (req.body?.text || "").toString().slice(0, 500).trim();
+  if (!target || !text) {
+    res.json({ ok: false, error: "Invalid" });
+    return;
+  }
+  if (!users[target]) {
+    res.json({ ok: false, error: "User not found" });
+    return;
+  }
+  // Zkontroluj zda jsou pratele
+  let areFriends = false;
+  if (mongoEnabled && mongoFriends) {
+    try {
+      const f = await mongoFriends.findOne({
+        status: "accepted",
+        $or: [
+          { from: session.username, to: target },
+          { from: target, to: session.username },
+        ],
+      });
+      areFriends = !!f;
+    } catch (err) {}
+  } else {
+    areFriends = friendsData.some((f) =>
+      f.status === "accepted" &&
+      ((f.from === session.username && f.to === target) ||
+       (f.from === target && f.to === session.username))
+    );
+  }
+  if (!areFriends) {
+    res.json({ ok: false, error: "Not friends" });
+    return;
+  }
+
+  const msg = {
+    from: session.username,
+    to: target,
+    text,
+    time: Date.now(),
+    read: false,
+  };
+
+  if (mongoEnabled && mongoDM) {
+    try {
+      await mongoDM.insertOne(msg);
+    } catch (err) {
+      console.error("[DM] Send error:", err.message);
+    }
+  } else {
+    dmData.push(msg);
+    saveDMFile();
+  }
+
+  // Live push do druheho usera
+  emitToUser(target, "dm_received", msg);
+  emitToUser(session.username, "dm_sent", msg);
+
+  res.json({ ok: true, message: msg });
+});
+
+// Historie DM s konkretnim friendem (oba smery)
+app.post("/api/dm/history", async (req, res) => {
+  const session = requireAuth(req, res);
+  if (!session) return;
+  const other = (req.body?.with || "").toString().trim();
+  if (!other) {
+    res.json({ ok: false, error: "Invalid" });
+    return;
+  }
+  let messages = [];
+  if (mongoEnabled && mongoDM) {
+    try {
+      messages = await mongoDM.find({
+        $or: [
+          { from: session.username, to: other },
+          { from: other, to: session.username },
+        ],
+      }).sort({ time: 1 }).limit(200).toArray();
+      messages = messages.map((m) => { const { _id, ...rest } = m; return rest; });
+      // Oznac jako precteny pro session usera
+      await mongoDM.updateMany(
+        { from: other, to: session.username, read: false },
+        { $set: { read: true } }
+      );
+    } catch (err) {
+      console.error("[DM] History error:", err.message);
+    }
+  } else {
+    messages = dmData
+      .filter((m) =>
+        (m.from === session.username && m.to === other) ||
+        (m.from === other && m.to === session.username)
+      )
+      .sort((a, b) => a.time - b.time)
+      .slice(-200);
+    // Oznac jako precteny
+    let changed = false;
+    for (const m of dmData) {
+      if (m.from === other && m.to === session.username && !m.read) {
+        m.read = true;
+        changed = true;
+      }
+    }
+    if (changed) saveDMFile();
+  }
+  res.json({ ok: true, messages });
+});
+
+// Pocet neprectenych DM (pro badge)
+app.post("/api/dm/unread", async (req, res) => {
+  const session = requireAuth(req, res);
+  if (!session) return;
+  let unreadByUser = {}; // { from: count }
+  if (mongoEnabled && mongoDM) {
+    try {
+      const docs = await mongoDM.find({ to: session.username, read: false }).toArray();
+      for (const m of docs) {
+        unreadByUser[m.from] = (unreadByUser[m.from] || 0) + 1;
+      }
+    } catch (err) {}
+  } else {
+    for (const m of dmData) {
+      if (m.to === session.username && !m.read) {
+        unreadByUser[m.from] = (unreadByUser[m.from] || 0) + 1;
+      }
+    }
+  }
+  res.json({ ok: true, unread: unreadByUser });
+});
 
 app.get("/api/rooms", (_req, res) => {
   const list = [];
