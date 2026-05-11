@@ -68,6 +68,25 @@ const SHARED = {
       pelletsPerShot: 1, recoil: 40, knockback: 90,
       bulletLife: 0.8, bulletRadius: 3, ammo: 30, color: "#54e0ff", isLaser: true,
     },
+    awp: {
+      name: "AWP Sniper", damage: 95, fireRate: 1.6,
+      bulletSpeed: 3500, bulletGravity: 0.0, spread: 0.0,
+      pelletsPerShot: 1, recoil: 800, knockback: 950,
+      bulletLife: 1.5, bulletRadius: 3, ammo: 3, color: "#9b59b6", isAwp: true,
+    },
+    grenade: {
+      name: "HE Grenade", damage: 0, splashDamage: 60, splashRadius: 180,
+      fireRate: 0.85, bulletSpeed: 700, bulletGravity: 0.95, spread: 0.0,
+      pelletsPerShot: 1, recoil: 200, knockback: 1100,
+      bulletLife: 2.5, bulletRadius: 6, ammo: 3, color: "#3b8c3b", isGrenade: true,
+      fuseTime: 1.6, // sekundy do vybuchu
+    },
+    punch: {
+      name: "Super Punch", damage: 28, fireRate: 0.45,
+      bulletSpeed: 1400, bulletGravity: 0.0, spread: 0.0,
+      pelletsPerShot: 1, recoil: 80, knockback: 2400, // MEGA knockback
+      bulletLife: 0.06, bulletRadius: 22, ammo: Infinity, color: "#ffe66d", isPunch: true,
+    },
   },
 
   PICKUP: {
@@ -669,8 +688,13 @@ class Game {
         color: wepDef.color,
         isRocket: !!wepDef.isRocket,
         isLaser: !!wepDef.isLaser,
+        isGrenade: !!wepDef.isGrenade,
+        isPunch: !!wepDef.isPunch,
+        isAwp: !!wepDef.isAwp,
         splashDamage: wepDef.splashDamage || 0,
         splashRadius: wepDef.splashRadius || 0,
+        fuseTime: wepDef.fuseTime,
+        fuseRemaining: wepDef.fuseTime,
       });
     }
 
@@ -687,7 +711,19 @@ class Game {
     const next = [];
     for (const b of this.bullets) {
       b.life -= dt;
-      if (b.life <= 0) continue;
+      // Granate ma fuseTime - kdyz dojde, vybuchne na miste
+      if (b.isGrenade) {
+        b.fuseRemaining = (b.fuseRemaining || b.fuseTime || 1.6) - dt;
+        if (b.fuseRemaining <= 0) {
+          this.explode(b);
+          continue; // konec, vybuchla
+        }
+      }
+      if (b.life <= 0) {
+        // Granate vybuchne i pri vyprseni life
+        if (b.isGrenade) this.explode(b);
+        continue;
+      }
 
       b.vy += b.gravity * dt;
       const stepX = b.vx * dt;
@@ -708,6 +744,19 @@ class Game {
         for (const p of this.players.values()) {
           if (!p.alive) continue;
           if (p.id === b.ownerId) continue;
+          // Granate se neaktivuje primym kontaktem - prosti odhodi
+          if (b.isGrenade) {
+            if (
+              b.x > p.x && b.x < p.x + SHARED.PLAYER.WIDTH &&
+              b.y > p.y && b.y < p.y + SHARED.PLAYER.HEIGHT
+            ) {
+              // Granate se odrazi od hrace - posli ji jinam (mensi sila)
+              b.vx *= -0.4;
+              b.vy *= -0.4;
+              break;
+            }
+            continue;
+          }
           if (
             b.x > p.x && b.x < p.x + SHARED.PLAYER.WIDTH &&
             b.y > p.y && b.y < p.y + SHARED.PLAYER.HEIGHT
@@ -723,6 +772,28 @@ class Game {
           if (plat.destroyed) continue;
           if (b.x > plat.x && b.x < plat.x + plat.w &&
               b.y > plat.y && b.y < plat.y + plat.h) {
+            // Granate se odrazi od platformy
+            if (b.isGrenade) {
+              // Zjisti zda odraz vertikalni nebo horizontalni
+              // Pokud zhora, vy se otoci (a tlumi)
+              const wasAbove = (b.y - stepY / steps) <= plat.y;
+              const wasLeft = (b.x - stepX / steps) <= plat.x;
+              const wasRight = (b.x - stepX / steps) >= plat.x + plat.w;
+              if (wasAbove || (b.y - stepY/steps) >= plat.y + plat.h) {
+                b.vy *= -0.45; // tlumeni
+                if (wasAbove) b.y = plat.y - 1;
+                else b.y = plat.y + plat.h + 1;
+              } else if (wasLeft || wasRight) {
+                b.vx *= -0.5;
+                if (wasLeft) b.x = plat.x - 1;
+                else b.x = plat.x + plat.w + 1;
+              } else {
+                b.vy *= -0.45;
+              }
+              // Ztrata energie (rolling friction)
+              b.vx *= 0.85;
+              break; // pokracuj v simulaci
+            }
             this.applyBulletPlatformHit(b, plat);
             alive = false;
             break;
@@ -749,8 +820,14 @@ class Game {
       const mag = Math.hypot(b.vx, b.vy) || 1;
       const dirX = b.vx / mag;
       const dirY = b.vy / mag;
-      victim.knockbackVx += dirX * b.knockback;
-      victim.knockbackVy += dirY * b.knockback - 60;
+      // Special handling pro punch - ultra knockback do strany + hodne nahoru
+      if (b.isPunch) {
+        victim.knockbackVx += dirX * b.knockback;
+        victim.knockbackVy += dirY * b.knockback * 0.4 - 600; // velky uplift nahoru
+      } else {
+        victim.knockbackVx += dirX * b.knockback;
+        victim.knockbackVy += dirY * b.knockback - 60;
+      }
       this.events.push({
         type: "hit", x: b.x, y: b.y,
         victimId: victim.id, damage: b.damage, weapon: b.weapon,
@@ -891,14 +968,26 @@ class Game {
           p.y < pu.y + SHARED.PICKUP.HEIGHT &&
           p.y + SHARED.PLAYER.HEIGHT > pu.y
         ) {
-          p.weapon = pu.weapon;
-          const wd = SHARED.WEAPONS[pu.weapon];
-          p.ammo = wd.ammo;
-          pu.dead = true;
-          this.events.push({
-            type: "pickup", playerId: p.id, weapon: pu.weapon,
-            x: pu.x, y: pu.y,
-          });
+          if (pu.weapon === "medkit") {
+            // Medkit - heal +50 HP (max 100)
+            const before = p.hp;
+            p.hp = Math.min(SHARED.PLAYER.MAX_HEALTH, p.hp + 50);
+            pu.dead = true;
+            this.events.push({
+              type: "pickup", playerId: p.id, weapon: "medkit",
+              x: pu.x, y: pu.y, heal: p.hp - before,
+            });
+          } else {
+            // Standard zbran pickup
+            p.weapon = pu.weapon;
+            const wd = SHARED.WEAPONS[pu.weapon];
+            p.ammo = wd.ammo;
+            pu.dead = true;
+            this.events.push({
+              type: "pickup", playerId: p.id, weapon: pu.weapon,
+              x: pu.x, y: pu.y,
+            });
+          }
         }
       }
     }
@@ -906,8 +995,16 @@ class Game {
   }
 
   spawnPickup() {
-    const choices = ["shotgun", "rocket", "laser"];
-    const weapon = choices[Math.floor(Math.random() * choices.length)];
+    // Vetsi sance na zbrane, mensi na medkit
+    const r = Math.random();
+    let weapon;
+    if (r < 0.18)      weapon = "medkit";    // 18% medkit
+    else if (r < 0.36) weapon = "shotgun";   // 18% shotgun
+    else if (r < 0.52) weapon = "rocket";    // 16% rocket
+    else if (r < 0.68) weapon = "laser";     // 16% laser
+    else if (r < 0.82) weapon = "awp";       // 14% awp
+    else if (r < 0.92) weapon = "grenade";   // 10% grenade
+    else               weapon = "punch";     // 8% punch
     const x = 100 + Math.random() * (SHARED.WORLD_WIDTH - 200);
     this.pickups.push({
       id: newId(), x, y: -40, vy: 0, weapon,
@@ -956,6 +1053,8 @@ class Game {
         vx: +b.vx.toFixed(1), vy: +b.vy.toFixed(1),
         weapon: b.weapon, color: b.color, radius: b.radius,
         isRocket: b.isRocket, isLaser: b.isLaser,
+        isGrenade: b.isGrenade, isPunch: b.isPunch, isAwp: b.isAwp,
+        fuseRemaining: b.fuseRemaining,
       })),
       pickups: this.pickups.map((pu) => ({
         id: pu.id, x: +pu.x.toFixed(1), y: +pu.y.toFixed(1), weapon: pu.weapon,
@@ -2514,7 +2613,7 @@ io.on("connection", (socket) => {
         sendConsole(socket, "  bot clear        - odebere vsechny boty", "info");
         sendConsole(socket, "  bot move on/off  - boti se hybou nebo stoji", "info");
         sendConsole(socket, "  kill             - zabij sam sebe", "info");
-        sendConsole(socket, "  give <weapon>    - daruj si zbran (pistol/shotgun/rocket/laser)", "info");
+        sendConsole(socket, "  give <weapon>    - daruj si zbran (pistol/shotgun/rocket/laser/awp/grenade/punch)", "info");
         sendConsole(socket, "  map <name>       - zmen mapu (jen v lobby)", "info");
         sendConsole(socket, "  start            - spusti zapas (i bez ready check)", "info");
         sendConsole(socket, "  list             - vypis hracu", "info");
@@ -2573,7 +2672,7 @@ io.on("connection", (socket) => {
       else if (main === "give") {
         const wep = args[0]?.toLowerCase();
         if (!wep || !SHARED.WEAPONS[wep]) {
-          return sendConsole(socket, "Pouziti: give pistol|shotgun|rocket|laser", "error");
+          return sendConsole(socket, "Pouziti: give pistol|shotgun|rocket|laser|awp|grenade|punch", "error");
         }
         if (!me || !me.alive) return sendConsole(socket, "Nezijes", "error");
         me.weapon = wep;

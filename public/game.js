@@ -3159,6 +3159,21 @@
         addShake(6);
       } else if (ev.type === "pickup") {
         spawnPickupBurst(ev.x, ev.y);
+        // Pokud medkit, ukazat zelene +HEAL particle floaty
+        if (ev.weapon === "medkit" && ev.heal) {
+          for (let i = 0; i < 10; i++) {
+            addParticle({
+              x: ev.x + (Math.random() - 0.5) * 20,
+              y: ev.y + (Math.random() - 0.5) * 20,
+              vx: (Math.random() - 0.5) * 80,
+              vy: -80 - Math.random() * 80,
+              life: 1.0, maxLife: 1.0,
+              size: 4 + Math.random() * 3,
+              color: "#4ade80",
+              kind: "blood", gravity: -100, // floating up
+            });
+          }
+        }
       }
     }
   }
@@ -3705,6 +3720,59 @@
       ctx.beginPath();
       ctx.arc(-12, 0, 6 + Math.random() * 2, 0, Math.PI * 2);
       ctx.fill();
+    } else if (b.isGrenade) {
+      // Granate - kulata zelena se zhasinajicim fuse
+      const fuseT = (b.fuseRemaining !== undefined) ? Math.max(0, b.fuseRemaining) : 1;
+      const blink = fuseT < 0.5 ? (Math.sin(performance.now() * 0.04) > 0 ? 1 : 0.4) : 1;
+      ctx.fillStyle = "#3b8c3b";
+      ctx.shadowBlur = 6 * blink;
+      ctx.shadowColor = "#5cff5c";
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 9, 0, Math.PI * 2);
+      ctx.fill();
+      // Pojistka cara
+      ctx.strokeStyle = "#cc8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y - 8);
+      ctx.lineTo(b.x + 4, b.y - 12);
+      ctx.stroke();
+      // Jiskra
+      if (Math.random() < 0.5) {
+        ctx.fillStyle = "#ffe66d";
+        ctx.beginPath();
+        ctx.arc(b.x + 4 + Math.random() * 4 - 2, b.y - 12 + Math.random() * 4 - 2, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (b.isPunch) {
+      // Punch - bila pest aura
+      ctx.fillStyle = "#fff";
+      ctx.shadowBlur = 20;
+      ctx.shadowColor = "#ffe66d";
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.radius || 20, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = "#ffe66d";
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (b.isAwp) {
+      // AWP - rychla tenka stopa
+      const len = 80;
+      const ang = Math.atan2(b.vy, b.vx);
+      ctx.translate(b.x, b.y);
+      ctx.rotate(ang);
+      const grad = ctx.createLinearGradient(-len, 0, 0, 0);
+      grad.addColorStop(0, "rgba(155,89,182,0)");
+      grad.addColorStop(1, "#fff");
+      ctx.fillStyle = grad;
+      ctx.fillRect(-len, -1.5, len, 3);
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#9b59b6";
+      ctx.fillStyle = "#9b59b6";
+      ctx.fillRect(-2, -2, 6, 4);
     } else {
       ctx.fillStyle = b.color || "#ffe66d";
       ctx.shadowBlur = 8;
@@ -3719,6 +3787,29 @@
   function drawPickup(pu) {
     const w = SHARED.PICKUP.WIDTH;
     const h = SHARED.PICKUP.HEIGHT;
+    // Medkit special - cervena s krizem
+    if (pu.weapon === "medkit") {
+      ctx.save();
+      const bob = Math.sin(performance.now() * 0.005) * 3;
+      ctx.translate(0, bob);
+      // Stin
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(pu.x + 3, pu.y + 3, w, h);
+      // Bila krabicka
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(pu.x, pu.y, w, h);
+      ctx.strokeStyle = "#c0392b";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(pu.x + 1, pu.y + 1, w - 2, h - 2);
+      // Cerveny kriz
+      ctx.fillStyle = "#e74c3c";
+      const cx = pu.x + w / 2;
+      const cy = pu.y + h / 2;
+      ctx.fillRect(cx - 9, cy - 3, 18, 6);
+      ctx.fillRect(cx - 3, cy - 9, 6, 18);
+      ctx.restore();
+      return;
+    }
     const wepDef = SHARED.WEAPONS[pu.weapon];
     const color = wepDef?.color || "#fff";
 
@@ -3742,7 +3833,11 @@
     const letter =
       pu.weapon === "shotgun" ? "S" :
       pu.weapon === "rocket" ? "R" :
-      pu.weapon === "laser" ? "L" : "P";
+      pu.weapon === "laser" ? "L" :
+      pu.weapon === "awp" ? "AWP" :
+      pu.weapon === "grenade" ? "G" :
+      pu.weapon === "punch" ? "FIST" : "P";
+    if (letter.length > 1) ctx.font = "bold 11px Segoe UI";
     ctx.fillText(letter, pu.x + w / 2, pu.y + h / 2 + 1);
     ctx.restore();
   }
