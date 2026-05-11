@@ -499,7 +499,10 @@
         <div class="lobby-header">
           <div>
             <div class="label">ROOM CODE</div>
-            <div id="lobby-code" class="lobby-code">-----</div>
+            <div class="lobby-code-wrap">
+              <div id="lobby-code" class="lobby-code">-----</div>
+              <button id="btn-copy-code" class="btn-copy" title="Copy code">COPY</button>
+            </div>
           </div>
           <div>
             <div class="label">MAP</div>
@@ -542,6 +545,17 @@
             <button id="phone-only-toggle" class="toggle-btn">
               <span class="toggle-state">OFF</span>
               <span class="toggle-hint">Allow only mobile players</span>
+            </button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
+              ROOM VISIBILITY
+              <span id="host-only-tag-3" class="host-tag">Host only</span>
+            </div>
+            <button id="public-toggle" class="toggle-btn">
+              <span class="toggle-state">PUBLIC</span>
+              <span class="toggle-hint">Visible in open rooms list</span>
             </button>
           </div>
         </div>

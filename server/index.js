@@ -184,6 +184,7 @@ class Game {
     this.matchSettings = {
       winScore: SHARED.ROUND.MATCH_WIN_SCORE, // pocet vyhranych kol pro vyhru matche
       phoneOnly: false, // pokud true, jen mobilni hraci se mohou pripojit
+      isPublic: true,   // pokud true, lobby je viditelna v open rooms listu
     };
   }
 
@@ -273,6 +274,9 @@ class Game {
     }
     if (settings && typeof settings.phoneOnly === "boolean") {
       this.matchSettings.phoneOnly = settings.phoneOnly;
+    }
+    if (settings && typeof settings.isPublic === "boolean") {
+      this.matchSettings.isPublic = settings.isPublic;
     }
     return true;
   }
@@ -2203,6 +2207,8 @@ app.post("/api/dm/unread", async (req, res) => {
 app.get("/api/rooms", (_req, res) => {
   const list = [];
   for (const [id, room] of rooms) {
+    // Skry private lobby (musi mit kod aby se pripojili)
+    if (room.game.matchSettings && room.game.matchSettings.isPublic === false) continue;
     list.push({
       id, name: room.name,
       playerCount: room.game.players.size,

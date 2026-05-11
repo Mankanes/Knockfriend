@@ -1699,6 +1699,53 @@
     socket.emit("set_match_settings", { phoneOnly: newState });
   };
 
+  // Public/Private toggle
+  const publicToggle = document.getElementById("public-toggle");
+  if (publicToggle) {
+    publicToggle.onclick = () => {
+      if (publicToggle.disabled) return;
+      // "active" = PRIVATE (cervena), neaktivni = PUBLIC (zelena)
+      const currentlyPrivate = publicToggle.classList.contains("active");
+      const newIsPublic = currentlyPrivate; // pokud bylo private, ted public
+      socket.emit("set_match_settings", { isPublic: newIsPublic });
+    };
+  }
+
+  // Copy room code
+  const btnCopyCode = document.getElementById("btn-copy-code");
+  if (btnCopyCode) {
+    btnCopyCode.onclick = async () => {
+      const code = document.getElementById("lobby-code").textContent.trim();
+      if (!code || code === "-----") return;
+      try {
+        // Modern API - vyzaduje HTTPS nebo localhost
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(code);
+        } else {
+          // Fallback pres temporary input element
+          const ta = document.createElement("textarea");
+          ta.value = code;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        // Vizualni feedback
+        btnCopyCode.classList.add("copied");
+        btnCopyCode.textContent = "COPIED!";
+        setTimeout(() => {
+          btnCopyCode.classList.remove("copied");
+          btnCopyCode.textContent = "COPY";
+        }, 1500);
+      } catch (err) {
+        btnCopyCode.textContent = "FAIL";
+        setTimeout(() => { btnCopyCode.textContent = "COPY"; }, 1500);
+      }
+    };
+  }
+
   socket.on("room_info", (info) => {
     if (info.id !== roomId) return;
     document.getElementById("lobby-code").textContent = info.id;
@@ -1730,6 +1777,18 @@
       phoneOnlyToggle.classList.toggle("active", phoneOn);
       phoneOnlyToggle.querySelector(".toggle-state").textContent = phoneOn ? "ON" : "OFF";
       phoneOnlyToggle.disabled = !isHost;
+
+      // Public/Private toggle stav
+      // isPublic = true (default) -> zobraz PUBLIC, "active" trida = PRIVATE
+      const isPublicLobby = info.matchSettings.isPublic !== false;
+      if (publicToggle) {
+        publicToggle.classList.toggle("active", !isPublicLobby);
+        publicToggle.querySelector(".toggle-state").textContent = isPublicLobby ? "PUBLIC" : "PRIVATE";
+        publicToggle.querySelector(".toggle-hint").textContent = isPublicLobby
+          ? "Visible in open rooms list"
+          : "Only people with code can join";
+        publicToggle.disabled = !isHost;
+      }
     }
 
     // Update host-only tagy
