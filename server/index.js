@@ -1187,6 +1187,7 @@ const TESTER_PASSWORD = process.env.TESTER_PASSWORD || "knocktester2026";
 
 const fs = require("fs");
 const crypto = require("crypto");
+const { containsProfanity, censorText } = require("./profanity");
 const USERS_FILE = path.join(__dirname, "..", "data", "users.json");
 
 // Zajisti ze data slozka existuje (pro file fallback)
@@ -1432,6 +1433,8 @@ function validateUsername(username) {
   if (username.length < 3) return "Username must be at least 3 characters";
   if (username.length > 16) return "Username max 16 characters";
   if (!/^[a-zA-Z0-9_-]+$/.test(username)) return "Only letters, numbers, _ and -";
+  // Cenzura - zakaz nevhodnych jmen
+  if (containsProfanity(username)) return "Username contains forbidden words";
   return null; // OK
 }
 
@@ -1786,9 +1789,13 @@ app.get("/api/stats/leaderboard", (req, res) => {
 // Posli feedback (kdokoli, i guest)
 app.post("/api/feedback/submit", async (req, res) => {
   const rating = parseInt(req.body?.rating) || 0;
-  const bugs = (req.body?.bugs || "").toString().slice(0, 1000).trim();
-  const suggestions = (req.body?.suggestions || "").toString().slice(0, 1000).trim();
-  const likes = (req.body?.likes || "").toString().slice(0, 500).trim();
+  let bugs = (req.body?.bugs || "").toString().slice(0, 1000).trim();
+  let suggestions = (req.body?.suggestions || "").toString().slice(0, 1000).trim();
+  let likes = (req.body?.likes || "").toString().slice(0, 500).trim();
+  // Cenzura
+  bugs = censorText(bugs);
+  suggestions = censorText(suggestions);
+  likes = censorText(likes);
 
   if (rating < 1 || rating > 5) {
     res.json({ ok: false, error: "Invalid rating" });
@@ -2173,11 +2180,13 @@ app.post("/api/dm/send", async (req, res) => {
   const session = requireAuth(req, res);
   if (!session) return;
   const target = (req.body?.to || "").toString().trim();
-  const text = (req.body?.text || "").toString().slice(0, 500).trim();
+  let text = (req.body?.text || "").toString().slice(0, 500).trim();
   if (!target || !text) {
     res.json({ ok: false, error: "Invalid" });
     return;
   }
+  // Cenzura DM textu
+  text = censorText(text);
   if (!users[target]) {
     res.json({ ok: false, error: "User not found" });
     return;
@@ -2757,6 +2766,12 @@ io.on("connection", (socket) => {
     let text = (data?.text || "").toString().slice(0, 100).trim();
     if (!text) return;
 
+    // Cenzura - nahrazuje zakazana slova hvezdickami (jen pro normalni zpravy, prikazy nech)
+    const isCommandCheck = text.startsWith("/");
+    if (!isCommandCheck) {
+      text = censorText(text);
+    }
+
     // Rate limit pouze pro normalni chat zpravy, ne pro prikazy
     const isCommand = text.startsWith("/");
     if (!isCommand) {
@@ -2904,6 +2919,14 @@ function joinRoom(socket, roomId, name, ack) {
   if (!room) {
     if (typeof ack === "function") ack({ ok: false, error: "Room not found" });
     return;
+  }
+
+  // Cenzura jmena - pokud je v nem profanity, zmenit na "Player"
+  // (registrovany username uz prosel filterem pri registraci)
+  if (typeof name === "string") {
+    if (containsProfanity(name)) {
+      name = "Player";
+    }
   }
 
   // Phone-only mode - povolen jen pokud je klient na touch zarizeni
