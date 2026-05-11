@@ -35,11 +35,18 @@
     if (fp) {
       const shouldShow = currentUser && (name === "menu" || name === "lobby");
       fp.style.display = shouldShow ? "flex" : "none";
+      if (!shouldShow) fp.classList.remove("open");
     }
     // Stats panel - viditelny v menu i lobby, ne ve hre
     const sp = document.getElementById("stats-panel");
     if (sp) {
-      sp.style.display = (name === "menu" || name === "lobby") ? "flex" : "none";
+      const show = (name === "menu" || name === "lobby");
+      sp.style.display = show ? "flex" : "none";
+      if (!show) sp.classList.remove("open");
+    }
+    // Mobile toggle tlacitka
+    if (typeof updateMobileToggleVisibility === "function") {
+      updateMobileToggleVisibility(name);
     }
   }
 
@@ -293,6 +300,13 @@
     } else {
       outgoingSection.style.display = "none";
     }
+
+    // Update mobile badge
+    let totalUnreadDM = 0;
+    for (const k in dmUnread) totalUnreadDM += dmUnread[k] || 0;
+    if (typeof updateMobileFriendsBadge === "function") {
+      updateMobileFriendsBadge(totalUnreadDM, data.incoming.length);
+    }
   }
 
   function createFriendRow(user, type) {
@@ -425,12 +439,74 @@
     friendsRefreshBtn.onclick = refreshFriendsList;
   }
 
-  // Auto-refresh kazdych 15s kdyz je menu aktivni
+  // Auto-refresh kazdych 15s kdyz je menu aktivni (a tab je viditelny)
   setInterval(() => {
+    if (document.hidden) return; // battery saver - tab je v pozadi
     if (currentUser && document.getElementById("menu")?.classList.contains("active")) {
       refreshFriendsList();
     }
   }, 15000);
+
+  // ---------- MOBILE PANEL TOGGLES ----------
+  const btnToggleStats = document.getElementById("btn-toggle-stats");
+  const btnToggleFriends = document.getElementById("btn-toggle-friends");
+  const statsP = document.getElementById("stats-panel");
+  const friendsP = document.getElementById("friends-panel");
+
+  function closeAllMobilePanels() {
+    statsP?.classList.remove("open");
+    friendsP?.classList.remove("open");
+    btnToggleStats?.classList.remove("active");
+    btnToggleFriends?.classList.remove("active");
+  }
+
+  if (btnToggleStats) {
+    btnToggleStats.onclick = () => {
+      const wasOpen = statsP?.classList.contains("open");
+      closeAllMobilePanels();
+      if (!wasOpen) {
+        statsP?.classList.add("open");
+        btnToggleStats.classList.add("active");
+      }
+    };
+  }
+  if (btnToggleFriends) {
+    btnToggleFriends.onclick = () => {
+      if (!currentUser) {
+        // Not logged in - rovnou ukaz neco
+        return;
+      }
+      const wasOpen = friendsP?.classList.contains("open");
+      closeAllMobilePanels();
+      if (!wasOpen) {
+        friendsP?.classList.add("open");
+        btnToggleFriends.classList.add("active");
+      }
+    };
+  }
+
+  // Skry mobile toggle tlacitka v relevantnich screenech (jen menu + lobby)
+  function updateMobileToggleVisibility(screenName) {
+    const show = (screenName === "menu" || screenName === "lobby");
+    if (btnToggleStats) btnToggleStats.style.display = show ? "inline-block" : "none";
+    if (btnToggleFriends) {
+      btnToggleFriends.style.display = (show && currentUser) ? "inline-block" : "none";
+    }
+    if (!show) closeAllMobilePanels();
+  }
+
+  // Update friends mobile badge (count of unread DMs + pending requests)
+  function updateMobileFriendsBadge(unreadDM, incoming) {
+    const badge = document.getElementById("friends-mobile-badge");
+    if (!badge) return;
+    const total = (unreadDM || 0) + (incoming || 0);
+    if (total > 0) {
+      badge.textContent = total > 9 ? "9+" : total;
+      badge.style.display = "inline-block";
+    } else {
+      badge.style.display = "none";
+    }
+  }
 
   // ---------- DM CHAT ----------
   const dmChatEl = document.getElementById("dm-chat");
@@ -444,6 +520,8 @@
 
   async function openDMChat(username) {
     if (!currentUser) return;
+    // Zavri mobile panely (aby DM chat nebyl prekryt)
+    if (typeof closeAllMobilePanels === "function") closeAllMobilePanels();
     dmActiveWith = username;
     dmChatTitleEl.textContent = username;
     dmChatEl.style.display = "flex";
@@ -999,6 +1077,7 @@
   // Initial refresh + auto-refresh kazdych 30s
   refreshStats();
   setInterval(() => {
+    if (document.hidden) return; // battery saver
     if (document.getElementById("menu")?.classList.contains("active")) {
       refreshStats();
     }
@@ -1014,7 +1093,9 @@
     const ctx = canvas.getContext("2d");
 
     function resize() {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      // Trailer ma snizene rozliseni pro lepsi vykon (zejmena na mobilu)
+      const maxDPR = window.innerWidth < 900 ? 1 : 1.5;
+      const dpr = Math.min(window.devicePixelRatio || 1, maxDPR);
       const w = window.innerWidth;
       const h = window.innerHeight;
       canvas.width = w * dpr;
@@ -1070,7 +1151,9 @@
       bots = [];
       bullets = [];
       particles = [];
-      for (let i = 0; i < 4; i++) {
+      // Mensi pocet botu na mobilu pro lepsi vykon
+      const botCount = window.innerWidth < 900 ? 2 : 4;
+      for (let i = 0; i < botCount; i++) {
         bots.push(spawnBot(i));
       }
       initialized = true;
@@ -3109,7 +3192,8 @@
   function spawnHit(x, y, weapon) {
     const w = SHARED.WEAPONS[weapon];
     const color = w?.color || "#ff5e5e";
-    for (let i = 0; i < 14; i++) {
+    const count = Math.round(14 * PARTICLE_MULT);
+    for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
       const sp = 100 + Math.random() * 350;
       addParticle({
@@ -3124,6 +3208,7 @@
     }
   }
   function spawnSpark(x, y, weapon) {
+    if (LOW_QUALITY_MODE) return; // Sparky uplne vypneme na slabych zarizenich
     const w = SHARED.WEAPONS[weapon];
     const color = w?.color || "#fff";
     for (let i = 0; i < 5; i++) {
@@ -3138,8 +3223,27 @@
       });
     }
   }
+  // ---------- MOBILE PERFORMANCE ----------
+  // Detekce slabého zařízení - nizsi pocet jader, nizka pamet, nebo male obrazovky
+  const LOW_QUALITY_MODE = (() => {
+    if (window.innerWidth < 900) return true; // mobile vzdy low quality
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    if (cores < 4) return true;
+    if (mem < 4) return true;
+    return false;
+  })();
+  if (LOW_QUALITY_MODE) {
+    document.body.classList.add("low-quality");
+    console.log("[PERF] Low quality mode enabled (mobile/weak device)");
+  }
+
+  // Particle multiplier - na mobilu / slabych zarizenich snizit
+  const PARTICLE_MULT = LOW_QUALITY_MODE ? 0.3 : 1.0;
+
   function spawnExplosion(x, y, radius) {
-    for (let i = 0; i < 40; i++) {
+    const count = Math.round(40 * PARTICLE_MULT);
+    for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
       const sp = 100 + Math.random() * 600;
       const colors = ["#ffe66d", "#ff9f43", "#ff5e3d", "#fff"];
@@ -3160,7 +3264,8 @@
     });
   }
   function spawnRubble(x, y) {
-    for (let i = 0; i < 18; i++) {
+    const count = Math.round(18 * PARTICLE_MULT);
+    for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
       const sp = 80 + Math.random() * 250;
       addParticle({
@@ -3233,7 +3338,9 @@
 
   function resizeCanvas() {
     // Pro ostry render na HiDPI obrazovkach (Retina, mobil) skalujeme canvas pixely
-    const dpr = Math.min(window.devicePixelRatio || 1, 2); // Limit 2 abychom neztratili FPS na 3x DPI
+    // Na slabych zarizenich (mobile/low-end) snizit DPR pro vyssi FPS
+    const maxDPR = LOW_QUALITY_MODE ? 1.3 : 2;
+    const dpr = Math.min(window.devicePixelRatio || 1, maxDPR);
     const cssWidth = window.innerWidth;
     const cssHeight = window.innerHeight;
     canvas.style.width = cssWidth + "px";

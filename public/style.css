@@ -2601,9 +2601,18 @@ body.has-touch .minimap {
 }
 
 /* Mobile - panel se schova (na uzkych obrazovkach by zabiral moc mista) */
+/* Mobile - friends panel jako slide-in zprava (zobrazeni se aktivuje class .open) */
 @media (max-width: 900px) {
   .friends-panel {
-    display: none !important;
+    /* Po aktivaci (.open) je viditelny, jinak schovany za pravym okrajem */
+    top: 50px;
+    right: -100%;
+    width: 280px;
+    max-height: calc(100vh - 70px);
+    transition: right 0.25s ease-out;
+  }
+  .friends-panel.open {
+    right: 10px;
   }
 }
 
@@ -2666,10 +2675,17 @@ body.has-touch .minimap {
   font-variant-numeric: tabular-nums;
 }
 
-/* Mobile - panel se schova (mensi obrazovky maji prednost herniho UI) */
+/* Mobile - stats panel jako slide-in zleva */
 @media (max-width: 900px) {
   .stats-panel {
-    display: none !important;
+    top: 50px;
+    left: -100%;
+    width: 240px;
+    max-height: calc(100vh - 70px);
+    transition: left 0.25s ease-out;
+  }
+  .stats-panel.open {
+    left: 10px;
   }
 }
 
@@ -3327,6 +3343,8 @@ body:has(#game.screen.active) .btn-feedback {
     left: 10px;
     width: auto;
     bottom: 10px;
+    height: 75vh;
+    max-height: 75dvh;
   }
 }
 
@@ -3404,5 +3422,133 @@ body:has(#game.screen.active) .btn-feedback {
   #lobby.screen.active ~ .friends-panel,
   #lobby.screen.active ~ .stats-panel {
     width: 230px;
+  }
+}
+
+/* ======================= MOBILE PANEL TOGGLES ======================= */
+.btn-mobile-toggle {
+  display: none; /* schovany na PC */
+  position: fixed;
+  top: 8px;
+  background: rgba(15, 20, 36, 0.9);
+  border: 1px solid rgba(74, 144, 226, 0.4);
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 60;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.btn-mobile-toggle:active {
+  background: rgba(74, 144, 226, 0.3);
+}
+.btn-mobile-stats {
+  left: 10px;
+}
+.btn-mobile-friends {
+  right: 10px;
+}
+.btn-mobile-toggle.active {
+  background: rgba(255, 138, 61, 0.25);
+  border-color: #ff8a3d;
+}
+
+.mobile-toggle-badge {
+  display: inline-block;
+  background: #ef4444;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: middle;
+  min-width: 14px;
+}
+
+/* Zobrazit tlacitka na mobilu */
+@media (max-width: 900px) {
+  .btn-mobile-toggle {
+    display: inline-block;
+  }
+}
+
+/* ======================= MOBILE GRAPHICS OPTIMIZATION ======================= */
+@media (max-width: 900px) {
+  /* Vypnout drahy backdrop-filter (blur) - zere CPU/GPU */
+  .menu-card,
+  .lobby-card,
+  .friends-panel,
+  .stats-panel,
+  .dm-chat,
+  .modal-card,
+  .auth-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Vypnout glow efekty na pozadi (drahe shadows) */
+  .menu-card,
+  .lobby-card,
+  .friends-panel,
+  .stats-panel,
+  .dm-chat,
+  .modal-card {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Vypnout pulsing animace ktere zatezuji renderer */
+  .logo-text,
+  .online-pulse,
+  .rank-Diamond,
+  .rank-Master,
+  .rank-Grandmaster {
+    animation: none !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Snizit shadows na buttonech */
+  .btn.primary,
+  .btn-feedback {
+    box-shadow: 0 2px 8px rgba(255, 138, 61, 0.3) !important;
+  }
+
+  /* Vypnout transitions na hover stavech (nepotrebne pri tapu) */
+  .friend-row,
+  .lb-row,
+  .stat-row,
+  .room-item {
+    transition: none !important;
+  }
+  .friend-row:hover,
+  .lb-row:hover,
+  .stat-row:hover,
+  .room-item:hover {
+    background: inherit;
+  }
+
+  /* Vetsi tap target pro vsechny tlacitka */
+  .friend-btn,
+  .btn-copy,
+  .btn-small,
+  .keybind-btn,
+  .win-btn,
+  .toggle-btn {
+    min-height: 36px;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* Larger inputs */
+  input[type="text"],
+  input[type="password"],
+  textarea {
+    font-size: 16px !important; /* iOS auto-zoom prevention pri >=16px */
   }
 }
