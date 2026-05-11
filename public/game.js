@@ -25,6 +25,22 @@
     if (fbBtn) {
       fbBtn.style.display = (name === "game") ? "none" : "flex";
     }
+    // Copyright - viditelny jen v menu/auth
+    const copy = document.getElementById("menu-copyright");
+    if (copy) {
+      copy.style.display = (name === "menu" || name === "auth") ? "block" : "none";
+    }
+    // Friends panel - viditelny v menu i lobby (jen pokud je user prihlasen), ne ve hre
+    const fp = document.getElementById("friends-panel");
+    if (fp) {
+      const shouldShow = currentUser && (name === "menu" || name === "lobby");
+      fp.style.display = shouldShow ? "flex" : "none";
+    }
+    // Stats panel - viditelny v menu i lobby, ne ve hre
+    const sp = document.getElementById("stats-panel");
+    if (sp) {
+      sp.style.display = (name === "menu" || name === "lobby") ? "flex" : "none";
+    }
   }
 
   // ---------- AUTH ----------
@@ -151,11 +167,8 @@
       if (userInfoTester) {
         userInfoTester.style.display = (currentUser.isTester && !currentUser.isAdmin) ? "inline-block" : "none";
       }
-      // Zobraz friends panel a refresh
-      if (friendsPanel) {
-        friendsPanel.style.display = "flex";
-        refreshFriendsList();
-      }
+      // Refresh friend list data (panel display reseno v showScreen)
+      refreshFriendsList();
       // Refresh stats (zobrazi moje stats sekci)
       if (typeof refreshStats === "function") refreshStats();
       // Refresh DM unread counts
@@ -163,11 +176,12 @@
     } else {
       userInfo.style.display = "none";
       guestNameInput.style.display = "block";
-      // Skry friends panel
-      if (friendsPanel) friendsPanel.style.display = "none";
       // Refresh stats (skryje moje stats sekci)
       if (typeof refreshStats === "function") refreshStats();
     }
+    // Re-evaluate panel visibility podle aktualni screen
+    const activeScreen = Object.keys(screens).find(k => screens[k].classList.contains("active")) || "auth";
+    showScreen(activeScreen);
   }
 
   // Logout button

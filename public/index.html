@@ -67,11 +67,6 @@
           <button id="btn-guest" class="btn-link">Continue as Guest</button>
         </div>
       </div>
-
-      <!-- Copyright -->
-      <div class="menu-copyright">
-        Copyright 2026 KuncarCorp. All rights reserved.
-      </div>
     </div>
 
     <div id="menu" class="screen">
@@ -141,50 +136,51 @@
         <span class="kb-group"><span class="kb-label">Chat</span> <kbd>Z</kbd></span>
         <span class="kb-group"><span class="kb-label">Console</span> <kbd>~</kbd></span>
       </div>
+    </div>
 
-      <!-- Friends panel - vpravo, jen pro prihlasene -->
-      <div id="friends-panel" class="friends-panel" style="display:none">
-        <div class="friends-header">
-          <h3>Friends</h3>
-          <button id="btn-friends-refresh" class="btn-small" title="Refresh">↻</button>
-        </div>
-
-        <!-- Vyhledavani -->
-        <div class="friends-search">
-          <input id="friends-search-input" type="text" placeholder="Search players..." maxlength="16" />
-          <div id="friends-search-results" class="friends-search-results"></div>
-        </div>
-
-        <!-- Incoming requests -->
-        <div id="friends-incoming-section" class="friends-section" style="display:none">
-          <div class="friends-section-title">
-            Friend requests (<span id="friends-incoming-count">0</span>)
-          </div>
-          <div id="friends-incoming" class="friends-list"></div>
-        </div>
-
-        <!-- Friends list -->
-        <div class="friends-section">
-          <div class="friends-section-title">
-            Friends (<span id="friends-count">0</span>)
-          </div>
-          <div id="friends-list" class="friends-list"></div>
-        </div>
-
-        <!-- Outgoing requests -->
-        <div id="friends-outgoing-section" class="friends-section" style="display:none">
-          <div class="friends-section-title">
-            Pending (<span id="friends-outgoing-count">0</span>)
-          </div>
-          <div id="friends-outgoing" class="friends-list"></div>
-        </div>
+    <!-- Friends panel - vpravo, jen pro prihlasene (mimo screens aby fungoval v menu, lobby, atd.) -->
+    <div id="friends-panel" class="friends-panel" style="display:none">
+      <div class="friends-header">
+        <h3>Friends</h3>
+        <button id="btn-friends-refresh" class="btn-small" title="Refresh">↻</button>
       </div>
 
-      <!-- Stats panel - vlevo -->
-      <div id="stats-panel" class="stats-panel">
-        <!-- Moje statistiky (jen pro prihlasene) -->
-        <div id="my-stats-section" class="stats-section" style="display:none">
-          <div class="stats-section-title">Your stats</div>
+      <!-- Vyhledavani -->
+      <div class="friends-search">
+        <input id="friends-search-input" type="text" placeholder="Search players..." maxlength="16" />
+        <div id="friends-search-results" class="friends-search-results"></div>
+      </div>
+
+      <!-- Incoming requests -->
+      <div id="friends-incoming-section" class="friends-section" style="display:none">
+        <div class="friends-section-title">
+          Friend requests (<span id="friends-incoming-count">0</span>)
+        </div>
+        <div id="friends-incoming" class="friends-list"></div>
+      </div>
+
+      <!-- Friends list -->
+      <div class="friends-section">
+        <div class="friends-section-title">
+          Friends (<span id="friends-count">0</span>)
+        </div>
+        <div id="friends-list" class="friends-list"></div>
+      </div>
+
+      <!-- Outgoing requests -->
+      <div id="friends-outgoing-section" class="friends-section" style="display:none">
+        <div class="friends-section-title">
+          Pending (<span id="friends-outgoing-count">0</span>)
+        </div>
+        <div id="friends-outgoing" class="friends-list"></div>
+      </div>
+    </div>
+
+    <!-- Stats panel - vlevo (mimo screens aby fungoval v menu, lobby, atd.) -->
+    <div id="stats-panel" class="stats-panel">
+      <!-- Moje statistiky (jen pro prihlasene) -->
+      <div id="my-stats-section" class="stats-section" style="display:none">
+        <div class="stats-section-title">Your stats</div>
 
           <!-- Rank display -->
           <div id="my-rank-display" class="rank-display">
@@ -260,10 +256,9 @@
         </div>
       </div>
 
-      <!-- Copyright -->
-      <div class="menu-copyright">
-        Copyright 2026 KuncarCorp. All rights reserved.
-      </div>
+    <!-- Copyright - mimo screens (zobrazen v menu/auth) -->
+    <div class="menu-copyright" id="menu-copyright">
+      Copyright 2026 KuncarCorp. All rights reserved.
     </div>
 
     <!-- Settings tlacitko - vzdy viditelne v rohu -->

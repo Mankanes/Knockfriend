@@ -3398,3 +3398,17 @@ body:has(#game.screen.active) .btn-feedback {
   border-color: #4ade80;
   color: #4ade80;
 }
+
+/* Panely (friends, stats) v lobby - lehce mensi aby nezasahovaly do lobby-card */
+#lobby.screen.active ~ #friends-panel,
+#lobby.screen.active ~ #stats-panel {
+  /* Pri smaller window - lobby card a panely budou kolidovat */
+}
+
+/* Na velmi malych obrazovkach (1100-1400px) udelej panely uzsi v lobby */
+@media (min-width: 901px) and (max-width: 1300px) {
+  #lobby.screen.active ~ .friends-panel,
+  #lobby.screen.active ~ .stats-panel {
+    width: 230px;
+  }
+}
