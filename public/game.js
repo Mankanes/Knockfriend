@@ -22,6 +22,10 @@
     for (const k in screens) screens[k].classList.toggle("active", k === name);
     // Nastav data-screen na body pro CSS selektory
     document.body.setAttribute("data-screen", name);
+    // Pri odchodu z herni obrazovky uvolni pointer lock
+    if (name !== "game" && typeof exitPointerLock === "function") {
+      exitPointerLock();
+    }
     // Feedback tlacitko - viditelne jen mimo hru (menu, lobby, auth)
     const fbBtn = document.getElementById("btn-open-feedback");
     if (fbBtn) {
@@ -1939,6 +1943,8 @@
     refreshCrosshairUI();
     drawCrosshairPreview();
     refreshSettingsActions();
+    // Uvolni pointer lock aby uzivatel mohl pouzivat UI
+    if (typeof exitPointerLock === "function") exitPointerLock();
   }
   function closeSettings() {
     settingsModal.classList.remove("active");
@@ -2274,6 +2280,8 @@
     input.left = false; input.right = false;
     input.jump = false; input.shoot = false;
     consoleHistoryIdx = -1;
+    // Uvolni pointer lock aby uzivatel mohl psat
+    if (typeof exitPointerLock === "function") exitPointerLock();
     // Pri prvnim otevreni vypis hint
     if (!consoleLog.children.length) {
       appendConsoleLine("Console opened. Type 'help' for commands.", "info");
@@ -2380,6 +2388,8 @@
     // Vypni vsechny inputy ve hre, ax neumre nahodou
     input.left = false; input.right = false;
     input.jump = false; input.shoot = false;
+    // Uvolni pointer lock aby uzivatel mohl psat
+    if (typeof exitPointerLock === "function") exitPointerLock();
   }
 
   function closeGameChat() {
@@ -2974,16 +2984,64 @@
   const canvas = document.getElementById("canvas");
   const ctx = canvas.getContext("2d");
 
+  // Pointer Lock - kdyz klikne do hry, kurzor zamknout v okne
+  // Myska bude "neviditelna" a nemuze utect z okna - lepsi pro FPS-style ovladani
+  let pointerLocked = false;
+
+  function requestPointerLock() {
+    if (isTouchDevice) return;
+    if (pointerLocked) return;
+    try {
+      canvas.requestPointerLock?.();
+    } catch (err) {}
+  }
+  function exitPointerLock() {
+    if (!pointerLocked) return;
+    try { document.exitPointerLock?.(); } catch (err) {}
+  }
+  document.addEventListener("pointerlockchange", () => {
+    pointerLocked = (document.pointerLockElement === canvas);
+    // Pri uvolneni resetuj shoot
+    if (!pointerLocked) {
+      input.shoot = false;
+    }
+  });
+  // ESC nebo zmena screen = exit pointer lock
+  // (ESC funguje automaticky v browserech)
+
   canvas.addEventListener("mousemove", (e) => {
     if (isTouchDevice) return; // mobile pouziva joystick, ne mys
-    const rect = canvas.getBoundingClientRect();
-    // CSS souradnice (canvas se renderuje s setTransform(dpr) takze pouzivame CSS pixely)
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
+    if (pointerLocked) {
+      // V pointer lock modu pouzivame movementX/Y misto absolutnich souradnic
+      // Akumulujeme pozici mysi v canvasu (jakoby virtualni kurzor)
+      mouseX += e.movementX || 0;
+      mouseY += e.movementY || 0;
+      // Drz kurzor v canvasu (clamp)
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      if (mouseX < 0) mouseX = 0;
+      if (mouseX > w) mouseX = w;
+      if (mouseY < 0) mouseY = 0;
+      if (mouseY > h) mouseY = h;
+    } else {
+      const rect = canvas.getBoundingClientRect();
+      // CSS souradnice (canvas se renderuje s setTransform(dpr) takze pouzivame CSS pixely)
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+    }
   });
   canvas.addEventListener("mousedown", (e) => {
     if (isTouchDevice) return;
-    if (e.button === 0) input.shoot = true;
+    if (e.button === 0) {
+      input.shoot = true;
+      // Pri prvnim kliknuti do canvasu zamkni mys
+      if (!pointerLocked) {
+        // Inicializuj virtualni kurzor doprostred (jinak by byl mimo)
+        mouseX = canvas.clientWidth / 2;
+        mouseY = canvas.clientHeight / 2;
+        requestPointerLock();
+      }
+    }
   });
   canvas.addEventListener("mouseup", (e) => {
     if (isTouchDevice) return;
@@ -2992,6 +3050,7 @@
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   canvas.addEventListener("mouseleave", () => {
     if (isTouchDevice) return;
+    if (pointerLocked) return; // V pointer lock nepoustime crosshair
     input.shoot = false;
     mouseX = -1; mouseY = -1; // schova crosshair
   });
