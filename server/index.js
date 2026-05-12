@@ -543,26 +543,34 @@ class Game {
       p.knockbackVx *= damp;
       p.knockbackVy *= damp;
 
+      // Lock pohyb v preround / postround / matchover (countdown faze)
+      // Hraci nemohou ovladat pohyb dokud countdown nedoběhne
+      const movementLocked = this.phase !== "playing";
+
       const inp = p.input;
-      const wantLeft = inp.left && !inp.right;
-      const wantRight = inp.right && !inp.left;
+      const wantLeft = !movementLocked && inp.left && !inp.right;
+      const wantRight = !movementLocked && inp.right && !inp.left;
       const targetVx = wantLeft ? -PL.MOVE_SPEED : wantRight ? PL.MOVE_SPEED : 0;
       const accel = p.onGround ? PL.ACCEL_GROUND : PL.ACCEL_AIR;
 
-      if (targetVx !== 0) {
+      if (movementLocked) {
+        // Behem countdownu nech hrace stat na miste - okamzite zastavit
+        if (p.onGround) {
+          p.vx = 0;
+        }
+      } else if (targetVx !== 0) {
         const diff = targetVx - p.vx;
         const step = Math.sign(diff) * accel * dt;
         if (Math.abs(step) > Math.abs(diff)) p.vx = targetVx;
         else p.vx += step;
         p.facing = wantLeft ? -1 : 1;
       } else if (p.onGround) {
-        const fric = PL.FRICTION_GROUND * dt;
-        if (p.vx > fric) p.vx -= fric;
-        else if (p.vx < -fric) p.vx += fric;
-        else p.vx = 0;
+        // INSTANT STOP - kdyz se nestiska zadna klavesa a hrac je na zemi, ihned se zastav
+        // (zadne klouzani po zastaveni)
+        p.vx = 0;
       }
 
-      if (inp.jump && !p.lastJumpInput && p.jumpsLeft > 0) {
+      if (!movementLocked && inp.jump && !p.lastJumpInput && p.jumpsLeft > 0) {
         if (p.onGround || p.jumpsLeft === PL.MAX_JUMPS) {
           p.vy = -PL.JUMP_VELOCITY;
         } else {
