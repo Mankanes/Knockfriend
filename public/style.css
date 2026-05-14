@@ -3553,3 +3553,146 @@ body:has(#game.screen.active) .btn-feedback {
     font-size: 16px !important; /* iOS auto-zoom prevention pri >=16px */
   }
 }
+
+/* ======================= GAME MODE SELECTOR ======================= */
+.mode-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.mode-btn {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(74, 144, 226, 0.25);
+  color: #94a3c4;
+  font-family: inherit;
+  padding: 8px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.15s;
+}
+.mode-btn:hover:not(:disabled) {
+  background: rgba(74, 144, 226, 0.15);
+  border-color: rgba(74, 144, 226, 0.5);
+}
+.mode-btn.active {
+  background: rgba(255, 138, 61, 0.15);
+  border-color: #ff8a3d;
+  color: #ff8a3d;
+}
+.mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mode-name {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+.mode-hint {
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: rgba(148, 163, 196, 0.7);
+}
+.mode-btn.active .mode-hint {
+  color: rgba(255, 138, 61, 0.8);
+}
+
+/* ======================= TEAM COLORS ======================= */
+.team-red { color: #ef4444; }
+.team-blue { color: #54e0ff; }
+.team-red-bg { background: rgba(239, 68, 68, 0.15); }
+.team-blue-bg { background: rgba(84, 224, 255, 0.15); }
+
+/* TDM/CTF score HUD nahore */
+.team-score-hud {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  background: rgba(10, 14, 24, 0.85);
+  padding: 8px 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  z-index: 30;
+  font-family: inherit;
+}
+.team-score-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+.team-score-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.team-score-value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+}
+.team-score-sep {
+  font-size: 22px;
+  color: #5a6a90;
+}
+
+/* GunGame HUD - aktualni level */
+.gungame-hud {
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 14, 24, 0.85);
+  padding: 6px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 138, 61, 0.4);
+  color: #ff8a3d;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  z-index: 30;
+}
+
+/* Respawn timer (TDM/CTF/GunGame) */
+.respawn-hud {
+  position: fixed;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: inherit;
+  color: #fff;
+  text-align: center;
+  z-index: 40;
+  pointer-events: none;
+}
+.respawn-text {
+  font-size: 18px;
+  letter-spacing: 2px;
+  color: #94a3c4;
+  margin-bottom: 6px;
+}
+.respawn-timer {
+  font-size: 48px;
+  font-weight: 800;
+  color: #ff8a3d;
+  text-shadow: 0 0 20px rgba(255, 138, 61, 0.6);
+}
+
+/* Mobile - smaller HUDs */
+@media (max-width: 900px) {
+  .team-score-hud { padding: 6px 14px; gap: 12px; }
+  .team-score-value { font-size: 18px; }
+  .team-score-sep { font-size: 18px; }
+  .gungame-hud { font-size: 11px; padding: 4px 10px; top: 42px; }
+  .respawn-timer { font-size: 36px; }
+  .mode-buttons { grid-template-columns: repeat(2, 1fr); }
+}

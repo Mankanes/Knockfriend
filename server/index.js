@@ -163,6 +163,91 @@ const SHARED = {
         { x: 800, y: 160 }, { x: 600, y: 580 },
       ],
     },
+    // INDUSTRIAL - tovarna s kontejnery
+    industrial: {
+      name: "Industrial", bg: "#2a2a2a", bgAccent: "#4a4030",
+      platforms: [
+        // Spodni rad
+        { x: 60, y: 740, w: 380, h: 40 },
+        { x: 1160, y: 740, w: 380, h: 40 },
+        // Stredni "kontejnery"
+        { x: 540, y: 660, w: 180, h: 120 },
+        { x: 880, y: 660, w: 180, h: 120 },
+        // Most uprostred
+        { x: 720, y: 540, w: 160, h: 22, destructible: true, hp: 80 },
+        // Bocni patro
+        { x: 100, y: 480, w: 280, h: 22 },
+        { x: 1220, y: 480, w: 280, h: 22 },
+        // Stredni vyssi platformy
+        { x: 480, y: 380, w: 200, h: 22 },
+        { x: 920, y: 380, w: 200, h: 22 },
+        // Horni
+        { x: 220, y: 280, w: 200, h: 22 },
+        { x: 1180, y: 280, w: 200, h: 22 },
+        { x: 690, y: 200, w: 220, h: 22 },
+      ],
+      spawns: [
+        { x: 150, y: 680 }, { x: 1400, y: 680 }, { x: 600, y: 600 },
+        { x: 970, y: 600 }, { x: 200, y: 420 }, { x: 1320, y: 420 },
+        { x: 800, y: 140 }, { x: 560, y: 320 },
+      ],
+    },
+    // ROOFTOPS - velke gap jumpy, mensi platformy
+    rooftops: {
+      name: "Rooftops", bg: "#1a1a30", bgAccent: "#2e2a4a",
+      platforms: [
+        // 3 hlavni strechy (vlevo, stred, vpravo)
+        { x: 60, y: 600, w: 360, h: 200 },
+        { x: 620, y: 540, w: 360, h: 260 },
+        { x: 1180, y: 600, w: 360, h: 200 },
+        // Mensi platformy mezi nimi (gap jumps)
+        { x: 460, y: 460, w: 120, h: 22 },
+        { x: 1020, y: 460, w: 120, h: 22 },
+        // Horni patra
+        { x: 260, y: 360, w: 180, h: 22, destructible: true, hp: 70 },
+        { x: 1160, y: 360, w: 180, h: 22, destructible: true, hp: 70 },
+        { x: 690, y: 320, w: 220, h: 22 },
+        // Nejvyssi
+        { x: 480, y: 200, w: 200, h: 22 },
+        { x: 920, y: 200, w: 200, h: 22 },
+      ],
+      spawns: [
+        { x: 200, y: 540 }, { x: 800, y: 480 }, { x: 1380, y: 540 },
+        { x: 350, y: 300 }, { x: 1250, y: 300 }, { x: 580, y: 140 },
+        { x: 1020, y: 140 }, { x: 800, y: 260 },
+      ],
+    },
+    // CAVES - tesne prostory, nizke platformy
+    caves: {
+      name: "Caves", bg: "#180f12", bgAccent: "#3a2418",
+      platforms: [
+        // Vrch (strop)
+        { x: 0, y: 0, w: 1600, h: 60 },
+        // Spodni patro
+        { x: 0, y: 720, w: 500, h: 40 },
+        { x: 600, y: 720, w: 400, h: 40 },
+        { x: 1100, y: 720, w: 500, h: 40 },
+        // Stredni patro (uzke)
+        { x: 200, y: 560, w: 240, h: 22 },
+        { x: 580, y: 560, w: 440, h: 22 },
+        { x: 1160, y: 560, w: 240, h: 22 },
+        // Horni patro (rozdrobene)
+        { x: 80, y: 400, w: 180, h: 22 },
+        { x: 380, y: 400, w: 180, h: 22, destructible: true, hp: 60 },
+        { x: 680, y: 400, w: 240, h: 22 },
+        { x: 1040, y: 400, w: 180, h: 22, destructible: true, hp: 60 },
+        { x: 1340, y: 400, w: 180, h: 22 },
+        // Pres strop (visici)
+        { x: 480, y: 220, w: 200, h: 22 },
+        { x: 920, y: 220, w: 200, h: 22 },
+        { x: 690, y: 130, w: 220, h: 22 },
+      ],
+      spawns: [
+        { x: 200, y: 660 }, { x: 800, y: 660 }, { x: 1380, y: 660 },
+        { x: 320, y: 500 }, { x: 1280, y: 500 }, { x: 800, y: 500 },
+        { x: 580, y: 160 }, { x: 1000, y: 160 },
+      ],
+    },
   },
 };
 
@@ -204,8 +289,16 @@ class Game {
       winScore: SHARED.ROUND.MATCH_WIN_SCORE, // pocet vyhranych kol pro vyhru matche
       phoneOnly: false, // pokud true, jen mobilni hraci se mohou pripojit
       isPublic: true,   // pokud true, lobby je viditelna v open rooms listu
+      gameMode: "ffa",  // ffa | tdm | ctf | gungame
     };
+    // Game mode state
+    this.teamScores = { red: 0, blue: 0 }; // pro TDM/CTF
+    this.flags = { red: null, blue: null }; // pro CTF - { x, y, holderId, atBase }
+    this.gunGameProgress = new Map(); // playerId -> indexInChain
   }
+
+  // Pro GunGame: poradi zbrani od slabe k silne
+  static GUN_GAME_CHAIN = ["pistol", "shotgun", "laser", "rocket", "awp", "grenade", "punch"];
 
   loadMap(mapKey) {
     if (!SHARED.MAPS[mapKey]) return;
@@ -243,6 +336,8 @@ class Game {
       ping: 0,
       botMove: false, // jestli se bot ma hybat
       shotCountWindow: [],
+      team: null, // "red" nebo "blue" pro TDM/CTF, null pro FFA/gungame
+      hasFlag: null, // "red"/"blue" pokud nese vlajku (CTF)
     };
     this.players.set(socketId, player);
     // Pokud jsme jeste neměli hosta a tohle je realny hrac, je host
@@ -297,6 +392,12 @@ class Game {
     if (settings && typeof settings.isPublic === "boolean") {
       this.matchSettings.isPublic = settings.isPublic;
     }
+    if (settings && typeof settings.gameMode === "string") {
+      const allowed = ["ffa", "tdm", "ctf", "gungame"];
+      if (allowed.includes(settings.gameMode)) {
+        this.matchSettings.gameMode = settings.gameMode;
+      }
+    }
     return true;
   }
 
@@ -347,6 +448,40 @@ class Game {
     this.events.push({ type: "round_start", round: this.roundNumber });
     this.loadMap(this.mapKey);
 
+    const mode = this.matchSettings.gameMode;
+
+    // Team assignment pro TDM a CTF
+    if (mode === "tdm" || mode === "ctf") {
+      this.assignTeams();
+    } else {
+      // FFA/gungame - vsichni bez teamu
+      for (const p of this.players.values()) p.team = null;
+    }
+
+    // CTF - inicializuj vlajky na obou stranach mapy
+    if (mode === "ctf") {
+      const map = this.map;
+      // Najdi nejlevejsi a nejpravejsi spawn jako pozice pro vlajky
+      let leftMost = map.spawns[0];
+      let rightMost = map.spawns[0];
+      for (const s of map.spawns) {
+        if (s.x < leftMost.x) leftMost = s;
+        if (s.x > rightMost.x) rightMost = s;
+      }
+      this.flags.red = { x: leftMost.x, y: leftMost.y - 40, baseX: leftMost.x, baseY: leftMost.y - 40, holderId: null, atBase: true };
+      this.flags.blue = { x: rightMost.x, y: rightMost.y - 40, baseX: rightMost.x, baseY: rightMost.y - 40, holderId: null, atBase: true };
+    } else {
+      this.flags.red = null;
+      this.flags.blue = null;
+    }
+
+    // GunGame - reset progress na pistol pro vsechny
+    if (mode === "gungame") {
+      for (const p of this.players.values()) {
+        this.gunGameProgress.set(p.id, 0); // pistol
+      }
+    }
+
     // Nahodne preusporadame spawny (Fisher-Yates shuffle)
     const spawns = this.map.spawns.slice();
     for (let j = spawns.length - 1; j > 0; j--) {
@@ -354,15 +489,30 @@ class Game {
       [spawns[j], spawns[k]] = [spawns[k], spawns[j]];
     }
 
+    // V TDM/CTF - red tym dostane leve spawny, blue prave
+    let redSpawns = [], blueSpawns = [], allSpawns = spawns;
+    if (mode === "tdm" || mode === "ctf") {
+      const midX = SHARED.WORLD_WIDTH / 2;
+      redSpawns = spawns.filter(s => s.x < midX);
+      blueSpawns = spawns.filter(s => s.x >= midX);
+      if (redSpawns.length === 0) redSpawns = spawns.slice(0, Math.ceil(spawns.length / 2));
+      if (blueSpawns.length === 0) blueSpawns = spawns.slice(Math.ceil(spawns.length / 2));
+    }
+
     // Pridelime spawny tak aby nikdo nebyl blizko jineho hrace
     const MIN_DIST = 250; // minimalni vzdalenost mezi hraci
     const usedSpawns = []; // pole pridelenych pozic
 
     for (const p of this.players.values()) {
+      // V TDM/CTF si vyber spawn podle teamu
+      let pool = allSpawns;
+      if ((mode === "tdm" || mode === "ctf") && p.team === "red") pool = redSpawns;
+      if ((mode === "tdm" || mode === "ctf") && p.team === "blue") pool = blueSpawns;
+
       // Najdi nejlepsi spawn - ten ktery je nejdal od vsech jiz pridelenych
       let bestSpawn = null;
       let bestMinDist = -1;
-      for (const s of spawns) {
+      for (const s of pool) {
         // Spocitej nejmensi vzdalenost od jiz pouzitych spawnu
         let minDist = Infinity;
         for (const u of usedSpawns) {
@@ -377,15 +527,15 @@ class Game {
         }
       }
       // Pokud zadne misto neni dost daleko, vezmeme jakekoli (random)
-      if (!bestSpawn || (bestMinDist < MIN_DIST && usedSpawns.length < spawns.length)) {
+      if (!bestSpawn || (bestMinDist < MIN_DIST && usedSpawns.length < pool.length)) {
         // Najdi prvni spawn ktery jeste nebyl pouzity
-        for (const s of spawns) {
+        for (const s of pool) {
           if (!usedSpawns.includes(s)) {
             bestSpawn = s;
             break;
           }
         }
-        if (!bestSpawn) bestSpawn = spawns[0]; // fallback
+        if (!bestSpawn) bestSpawn = pool[0] || spawns[0]; // fallback
       }
 
       usedSpawns.push(bestSpawn);
@@ -394,14 +544,34 @@ class Game {
       p.knockbackVx = 0; p.knockbackVy = 0;
       p.hp = SHARED.PLAYER.MAX_HEALTH;
       p.alive = true;
-      p.weapon = "pistol";
-      p.ammo = Infinity;
+      p.hasFlag = null;
+      // GunGame - kazdy zacina pistolkou
+      if (mode === "gungame") {
+        p.weapon = "pistol";
+        p.ammo = Infinity;
+      } else {
+        p.weapon = "pistol";
+        p.ammo = Infinity;
+      }
       p.jumpsLeft = SHARED.PLAYER.MAX_JUMPS;
       p.respawnAt = 0;
     }
 
     this.phase = "preround";
     this.phaseTimer = SHARED.ROUND.PRE_ROUND;
+  }
+
+  // Rozdeli hrace do tymu (vyvazene)
+  assignTeams() {
+    const players = Array.from(this.players.values());
+    // Shuffle pro nahodne rozdeleni
+    for (let i = players.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [players[i], players[j]] = [players[j], players[i]];
+    }
+    for (let i = 0; i < players.length; i++) {
+      players[i].team = i % 2 === 0 ? "red" : "blue";
+    }
   }
 
   endRound(winnerId) {
@@ -484,6 +654,10 @@ class Game {
       this.simulatePlayers(dt, true);
       this.simulateBullets(dt);
       this.simulatePickups(dt);
+      // CTF - aktualizace vlajek (pickup, capture, auto-return)
+      if (this.matchSettings.gameMode === "ctf") {
+        this.simulateCTF(dt);
+      }
       this.checkWinCondition();
       return;
     }
@@ -531,7 +705,15 @@ class Game {
       if (!p.alive) {
         if (this.phase === "playing" && p.respawnAt > 0) {
           p.respawnAt -= dt;
-          if (p.respawnAt <= 0) p.respawnAt = 0;
+          if (p.respawnAt <= 0) {
+            // V TDM/CTF/GunGame - respawn na vlastni strane mapy
+            const mode = this.matchSettings.gameMode;
+            if (mode === "tdm" || mode === "ctf" || mode === "gungame") {
+              this.respawnPlayer(p);
+            } else {
+              p.respawnAt = 0;
+            }
+          }
         }
         continue;
       }
@@ -752,6 +934,11 @@ class Game {
         for (const p of this.players.values()) {
           if (!p.alive) continue;
           if (p.id === b.ownerId) continue;
+          // Friendly fire prevention pro team modes
+          const owner = this.players.get(b.ownerId);
+          if (owner && owner.team && p.team && owner.team === p.team) {
+            continue; // stejny tym - neudelej damage
+          }
           // Granate se neaktivuje primym kontaktem - prosti odhodi
           if (b.isGrenade) {
             if (
@@ -867,8 +1054,13 @@ class Game {
 
   explode(b) {
     this.events.push({ type: "explosion", x: b.x, y: b.y, radius: b.splashRadius });
+    const owner = this.players.get(b.ownerId);
     for (const p of this.players.values()) {
       if (!p.alive) continue;
+      // Friendly fire prevention pro team modes (splash damage)
+      if (owner && owner.team && p.team && owner.team === p.team && p.id !== b.ownerId) {
+        continue; // stejny tym - skip
+      }
       const cx = p.x + SHARED.PLAYER.WIDTH / 2;
       const cy = p.y + SHARED.PLAYER.HEIGHT / 2;
       const dist = Math.hypot(cx - b.x, cy - b.y);
@@ -933,6 +1125,54 @@ class Game {
       }
     }
     this.events.push({ type: "death", victimId: victim.id, killerId, cause });
+
+    const mode = this.matchSettings.gameMode;
+
+    // V TDM/CTF/GunGame - nastav respawn timer
+    if (mode === "tdm" || mode === "ctf" || mode === "gungame") {
+      victim.respawnAt = 2.5; // 2.5s respawn
+    }
+
+    // TDM - kazdy kill da 1 bod tymu killera
+    if (mode === "tdm" && killerId && killerId !== victim.id) {
+      const k = this.players.get(killerId);
+      if (k && k.team) {
+        this.teamScores[k.team] = (this.teamScores[k.team] || 0) + 1;
+      }
+    }
+
+    // CTF - pokud victim nesl vlajku, vrat ji
+    if (mode === "ctf" && victim.hasFlag) {
+      const flag = this.flags[victim.hasFlag];
+      if (flag) {
+        flag.holderId = null;
+        flag.atBase = false; // padla na zem, vrati se nebo zvedne nekdo
+        flag.x = victim.x;
+        flag.y = victim.y;
+        flag.dropTime = Date.now(); // timer pro auto-return
+      }
+      victim.hasFlag = null;
+    }
+
+    // GunGame - posun killer na dalsi zbran
+    if (mode === "gungame" && killerId && killerId !== victim.id) {
+      const k = this.players.get(killerId);
+      if (k) {
+        const cur = this.gunGameProgress.get(k.id) || 0;
+        const next = cur + 1;
+        this.gunGameProgress.set(k.id, next);
+        // Posledni zbran -> killer vyhraje match
+        if (next >= Game.GUN_GAME_CHAIN.length) {
+          this.matchWinner = k.id;
+          this.events.push({ type: "gungame_win", playerId: k.id, name: k.name });
+        } else {
+          // Aktualizuj zbran
+          k.weapon = Game.GUN_GAME_CHAIN[next];
+          k.ammo = Infinity;
+          this.events.push({ type: "gungame_level_up", playerId: k.id, level: next, weapon: k.weapon });
+        }
+      }
+    }
   }
 
   simulatePickups(dt) {
@@ -1021,12 +1261,174 @@ class Game {
   }
 
   checkWinCondition() {
+    const mode = this.matchSettings.gameMode;
+
+    // GunGame - matchWinner uz nastaven, koncime match
+    if (mode === "gungame" && this.matchWinner) {
+      this.endMatch();
+      return;
+    }
+
+    // TDM - kdo dosahne winScore * 5 killu vyhrava match
+    if (mode === "tdm") {
+      const target = this.matchSettings.winScore * 5; // 5 killu = 1 "win"
+      if (this.teamScores.red >= target) {
+        this.matchWinner = "red";
+        this.endMatch();
+        return;
+      }
+      if (this.teamScores.blue >= target) {
+        this.matchWinner = "blue";
+        this.endMatch();
+        return;
+      }
+      // V TDM hraje porad - respawn po smrti, neresetujeme kola
+      return;
+    }
+
+    // CTF - kdo prvni capturne 3 vlajky vyhrava match
+    if (mode === "ctf") {
+      const target = this.matchSettings.winScore;
+      if (this.teamScores.red >= target) {
+        this.matchWinner = "red";
+        this.endMatch();
+        return;
+      }
+      if (this.teamScores.blue >= target) {
+        this.matchWinner = "blue";
+        this.endMatch();
+        return;
+      }
+      return; // CTF nekonci na deaths
+    }
+
+    // FFA (default) - posledni alive vyhrava kolo
     const alive = [...this.players.values()].filter((p) => p.alive);
     if (this.players.size >= 2 && alive.length <= 1) {
       this.endRound(alive[0]?.id || null);
     } else if (this.players.size === 1 && alive.length === 0) {
       this.endRound(null);
     }
+  }
+
+  // Pomocna funkce - ukoncuje match (pro TDM/CTF/GunGame ktere nemaji kola)
+  endMatch() {
+    this.phase = "matchover";
+    this.phaseTimer = SHARED.ROUND.POST_MATCH;
+    this.events.push({ type: "match_over", winner: this.matchWinner });
+  }
+
+  // CTF flag logic - pickup, capture, drop, return
+  simulateCTF(dt) {
+    const PL = SHARED.PLAYER;
+    const FLAG_RETURN_TIME = 10; // 10s na zemi -> auto return na base
+
+    for (const team of ["red", "blue"]) {
+      const flag = this.flags[team];
+      if (!flag) continue;
+
+      // Pokud nese vlajku hrac, posunout s nim
+      if (flag.holderId) {
+        const holder = this.players.get(flag.holderId);
+        if (holder && holder.alive) {
+          flag.x = holder.x + PL.WIDTH / 2;
+          flag.y = holder.y - 20;
+          // Capture? Kdyz holder dosahne sve vlastni vlajkove base s vlajkou nepritele
+          const homeFlag = this.flags[holder.team];
+          if (homeFlag && homeFlag.atBase) {
+            const dx = flag.x - homeFlag.baseX;
+            const dy = flag.y - homeFlag.baseY;
+            if (Math.hypot(dx, dy) < 60) {
+              // Capture!
+              this.teamScores[holder.team] = (this.teamScores[holder.team] || 0) + 1;
+              this.events.push({ type: "flag_captured", team: holder.team, by: holder.id, name: holder.name });
+              // Vrat zachycenou vlajku zpet
+              flag.x = flag.baseX; flag.y = flag.baseY;
+              flag.holderId = null; flag.atBase = true;
+              holder.hasFlag = null;
+            }
+          }
+          continue;
+        } else {
+          // Holder umrel/zmizel - vlajka spadne (uz reseno v killPlayer pro death)
+          flag.holderId = null;
+        }
+      }
+
+      // Auto-return po 10s na zemi (mimo base)
+      if (!flag.atBase && !flag.holderId) {
+        if (!flag.dropTime) flag.dropTime = Date.now();
+        if (Date.now() - flag.dropTime > FLAG_RETURN_TIME * 1000) {
+          flag.x = flag.baseX; flag.y = flag.baseY;
+          flag.atBase = true;
+          flag.dropTime = null;
+          this.events.push({ type: "flag_returned", team });
+        }
+      }
+
+      // Hrac sebere vlajku
+      for (const p of this.players.values()) {
+        if (!p.alive || p.hasFlag) continue;
+        if (flag.holderId) break; // uz ji nekdo nese
+        // Sebere protivnikovu vlajku
+        if (p.team && p.team !== team) {
+          const dx = (p.x + PL.WIDTH / 2) - flag.x;
+          const dy = (p.y + PL.HEIGHT / 2) - flag.y;
+          if (Math.hypot(dx, dy) < 30) {
+            flag.holderId = p.id;
+            flag.atBase = false;
+            flag.dropTime = null;
+            p.hasFlag = team;
+            this.events.push({ type: "flag_pickup", team, by: p.id, name: p.name });
+            break;
+          }
+        }
+        // Hrac muze vratit svou padlou vlajku tim ze do ni vrazi
+        if (p.team === team && !flag.atBase) {
+          const dx = (p.x + PL.WIDTH / 2) - flag.x;
+          const dy = (p.y + PL.HEIGHT / 2) - flag.y;
+          if (Math.hypot(dx, dy) < 30) {
+            flag.x = flag.baseX; flag.y = flag.baseY;
+            flag.atBase = true;
+            flag.dropTime = null;
+            this.events.push({ type: "flag_returned", team, by: p.id });
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Respawn hrace v non-FFA modech
+  respawnPlayer(p) {
+    const mode = this.matchSettings.gameMode;
+    // Vyber spawn (vlastni team strana mapy)
+    const spawns = this.map.spawns;
+    let pool = spawns;
+    if ((mode === "tdm" || mode === "ctf") && p.team) {
+      const midX = SHARED.WORLD_WIDTH / 2;
+      pool = spawns.filter(s => p.team === "red" ? s.x < midX : s.x >= midX);
+      if (pool.length === 0) pool = spawns;
+    }
+    const sp = pool[Math.floor(Math.random() * pool.length)];
+    p.x = sp.x; p.y = sp.y;
+    p.vx = 0; p.vy = 0;
+    p.knockbackVx = 0; p.knockbackVy = 0;
+    p.hp = SHARED.PLAYER.MAX_HEALTH;
+    p.alive = true;
+    p.jumpsLeft = SHARED.PLAYER.MAX_JUMPS;
+    p.respawnAt = 0;
+    p.hasFlag = null;
+    // GunGame - obnov zbran podle progress
+    if (mode === "gungame") {
+      const idx = this.gunGameProgress.get(p.id) || 0;
+      p.weapon = Game.GUN_GAME_CHAIN[idx] || "pistol";
+      p.ammo = Infinity;
+    } else {
+      p.weapon = "pistol";
+      p.ammo = Infinity;
+    }
+    this.events.push({ type: "respawn", playerId: p.id, x: p.x, y: p.y });
   }
 
   snapshot() {
@@ -1055,6 +1457,9 @@ class Game {
         isAdmin: !!p.isAdmin,
         isTester: !!p.isTester,
         ping: p.isBot ? 0 : (p.ping || 0),
+        team: p.team,
+        hasFlag: p.hasFlag,
+        respawnAt: +(p.respawnAt || 0).toFixed(2),
       })),
       bullets: this.bullets.map((b) => ({
         id: b.id, x: +b.x.toFixed(1), y: +b.y.toFixed(1),
@@ -1067,6 +1472,20 @@ class Game {
       pickups: this.pickups.map((pu) => ({
         id: pu.id, x: +pu.x.toFixed(1), y: +pu.y.toFixed(1), weapon: pu.weapon,
       })),
+      gameMode: this.matchSettings.gameMode,
+      teamScores: this.teamScores,
+      flags: {
+        red: this.flags.red ? {
+          x: +this.flags.red.x.toFixed(1), y: +this.flags.red.y.toFixed(1),
+          baseX: this.flags.red.baseX, baseY: this.flags.red.baseY,
+          holderId: this.flags.red.holderId, atBase: this.flags.red.atBase,
+        } : null,
+        blue: this.flags.blue ? {
+          x: +this.flags.blue.x.toFixed(1), y: +this.flags.blue.y.toFixed(1),
+          baseX: this.flags.blue.baseX, baseY: this.flags.blue.baseY,
+          holderId: this.flags.blue.holderId, atBase: this.flags.blue.atBase,
+        } : null,
+      },
       events: this.events,
     };
   }

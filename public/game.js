@@ -1803,6 +1803,15 @@
     };
   });
 
+  // Game mode buttons - host muze menit game mode
+  document.querySelectorAll(".mode-btn").forEach((btn) => {
+    btn.onclick = () => {
+      if (btn.disabled) return;
+      const mode = btn.getAttribute("data-mode");
+      socket.emit("set_match_settings", { gameMode: mode });
+    };
+  });
+
   // Phone only toggle
   phoneOnlyToggle.onclick = () => {
     if (phoneOnlyToggle.disabled) return;
@@ -1882,6 +1891,22 @@
         btn.classList.toggle("active", w === ws);
         btn.disabled = !isHost;
       });
+
+      // Game mode buttons stav
+      const gm = info.matchSettings.gameMode || "ffa";
+      document.querySelectorAll(".mode-btn").forEach((btn) => {
+        const m = btn.getAttribute("data-mode");
+        btn.classList.toggle("active", m === gm);
+        btn.disabled = !isHost;
+      });
+      // Aktualizuj label "ROUNDS TO WIN" podle modu
+      const wsLabel = document.getElementById("winscore-label");
+      if (wsLabel) {
+        if (gm === "tdm") wsLabel.textContent = "WINS (×5 kills)";
+        else if (gm === "ctf") wsLabel.textContent = "FLAGS TO WIN";
+        else if (gm === "gungame") wsLabel.textContent = "ROUNDS TO WIN";
+        else wsLabel.textContent = "ROUNDS TO WIN";
+      }
 
       // Phone-only toggle stav
       const phoneOn = !!info.matchSettings.phoneOnly;
@@ -3505,6 +3530,11 @@
     }
 
     for (const pu of state.pickups) drawPickup(pu);
+    // CTF - flagy ve svete (pred hraci)
+    if (state.flags) {
+      if (state.flags.red) drawFlag(state.flags.red, "red");
+      if (state.flags.blue) drawFlag(state.flags.blue, "blue");
+    }
     for (const p of state.players) drawPlayer(p);
     for (const b of state.bullets) drawBullet(b);
     drawParticles();
@@ -3637,16 +3667,21 @@
       ctx.globalAlpha = 0.35;
     }
 
+    // V team modes pouzij team barvu misto hracovy
+    let bodyColor = p.color;
+    if (p.team === "red") bodyColor = "#ef4444";
+    else if (p.team === "blue") bodyColor = "#54e0ff";
+
     ctx.fillStyle = "rgba(0,0,0,0.4)";
     ctx.beginPath();
     ctx.ellipse(p.x + W / 2, p.y + H + 4, W * 0.5, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = p.color;
+    ctx.fillStyle = bodyColor;
     roundRect(ctx, p.x, p.y, W, H, 8);
     ctx.fill();
 
-    ctx.fillStyle = lighten(p.color, 0.18);
+    ctx.fillStyle = lighten(bodyColor, 0.18);
     roundRect(ctx, p.x + 4, p.y + 4, W - 8, H * 0.45, 6);
     ctx.fill();
 
@@ -3661,6 +3696,22 @@
     ctx.beginPath(); ctx.arc(eyeBaseX + 6 + eyeOffset + (p.facing > 0 ? 1 : -1), eyeY, 2, 0, Math.PI * 2); ctx.fill();
 
     drawWeapon(p);
+
+    // CTF - pokud nese vlajku, namaluj ji nad hlavou
+    if (p.hasFlag) {
+      const flagColor = p.hasFlag === "red" ? "#ef4444" : "#54e0ff";
+      ctx.save();
+      ctx.fillStyle = "#8b6914"; // tyc
+      ctx.fillRect(p.x + W / 2 - 1, p.y - 35, 2, 30);
+      ctx.fillStyle = flagColor;
+      ctx.beginPath();
+      ctx.moveTo(p.x + W / 2, p.y - 35);
+      ctx.lineTo(p.x + W / 2 + 20, p.y - 30);
+      ctx.lineTo(p.x + W / 2, p.y - 22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.font = "bold 13px Segoe UI";
@@ -3853,6 +3904,41 @@
     ctx.restore();
   }
 
+  function drawFlag(flag, team) {
+    // Pokud nese vlajku nekdo, neresi (kreslime na hracovi)
+    if (flag.holderId) return;
+
+    const color = team === "red" ? "#ef4444" : "#54e0ff";
+    const bob = Math.sin(performance.now() * 0.004) * 4;
+    ctx.save();
+    // Base podstavec (kruh kolem)
+    if (flag.atBase) {
+      ctx.fillStyle = team === "red" ? "rgba(239, 68, 68, 0.15)" : "rgba(84, 224, 255, 0.15)";
+      ctx.beginPath();
+      ctx.arc(flag.baseX, flag.baseY + 30, 50, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(flag.baseX, flag.baseY + 30, 50, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Stozar
+    ctx.fillStyle = "#8b6914";
+    ctx.fillRect(flag.x - 1.5, flag.y + bob, 3, 50);
+    // Vlajka (trojuhelnik)
+    ctx.fillStyle = color;
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = color;
+    ctx.beginPath();
+    ctx.moveTo(flag.x + 1.5, flag.y + bob);
+    ctx.lineTo(flag.x + 30, flag.y + 8 + bob);
+    ctx.lineTo(flag.x + 1.5, flag.y + 18 + bob);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
   function drawPickup(pu) {
     const w = SHARED.PICKUP.WIDTH;
     const h = SHARED.PICKUP.HEIGHT;
@@ -4002,9 +4088,19 @@
     } else if (state.phase === "matchover") {
       banner.style.display = "block";
       banner.classList.add("small");
-      const w = state.players.find((p) => p.id === state.matchWinner);
-      banner.textContent = w ? `${w.name.toUpperCase()} WINS THE MATCH!` : "MATCH OVER";
-      banner.style.color = w?.color || "#fff";
+      const mode = state.gameMode;
+      // V TDM/CTF/GunGame matchWinner muze byt "red"/"blue" string
+      if (state.matchWinner === "red") {
+        banner.textContent = "RED TEAM WINS!";
+        banner.style.color = "#ef4444";
+      } else if (state.matchWinner === "blue") {
+        banner.textContent = "BLUE TEAM WINS!";
+        banner.style.color = "#54e0ff";
+      } else {
+        const w = state.players.find((p) => p.id === state.matchWinner);
+        banner.textContent = w ? `${w.name.toUpperCase()} WINS THE MATCH!` : "MATCH OVER";
+        banner.style.color = w?.color || "#fff";
+      }
     } else {
       banner.style.display = "none";
       banner.style.color = "#fff";
@@ -4012,6 +4108,84 @@
 
     // Tab scoreboard - aktualizovat pokud je viditelny
     if (isTabOpen) updateTabScoreboard(state);
+
+    // Mode-specific HUDs
+    updateModeHUD(state);
+  }
+
+  // ---------- MODE HUDs (TDM/CTF/GunGame) ----------
+  function ensureModeHUD(id, className) {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement("div");
+      el.id = id;
+      el.className = className;
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function updateModeHUD(state) {
+    const mode = state.gameMode || "ffa";
+    // Pokud nejsme v hre, schovat
+    if (!screens.game?.classList.contains("active")) {
+      const tsh = document.getElementById("team-score-hud");
+      if (tsh) tsh.style.display = "none";
+      const ggh = document.getElementById("gungame-hud");
+      if (ggh) ggh.style.display = "none";
+      const rh = document.getElementById("respawn-hud");
+      if (rh) rh.style.display = "none";
+      return;
+    }
+
+    // TDM/CTF - team score nahore
+    if ((mode === "tdm" || mode === "ctf") && state.teamScores) {
+      const el = ensureModeHUD("team-score-hud", "team-score-hud");
+      el.innerHTML = `
+        <div class="team-score-item">
+          <div class="team-score-label team-red">RED</div>
+          <div class="team-score-value">${state.teamScores.red || 0}</div>
+        </div>
+        <div class="team-score-sep">:</div>
+        <div class="team-score-item">
+          <div class="team-score-label team-blue">BLUE</div>
+          <div class="team-score-value">${state.teamScores.blue || 0}</div>
+        </div>
+      `;
+      el.style.display = "flex";
+    } else {
+      const el = document.getElementById("team-score-hud");
+      if (el) el.style.display = "none";
+    }
+
+    // GunGame - aktualni level / next weapon
+    if (mode === "gungame") {
+      const self = state.players.find(p => p.id === selfId);
+      if (self) {
+        const wd = SHARED.WEAPONS[self.weapon];
+        const el = ensureModeHUD("gungame-hud", "gungame-hud");
+        el.textContent = `GUN GAME — ${wd?.name || self.weapon}`;
+        el.style.display = "block";
+      }
+    } else {
+      const el = document.getElementById("gungame-hud");
+      if (el) el.style.display = "none";
+    }
+
+    // Respawn timer (jen v non-FFA modech kdyz hrac mrtvy)
+    const self = state.players.find(p => p.id === selfId);
+    if (self && !self.alive && (mode === "tdm" || mode === "ctf" || mode === "gungame")) {
+      const el = ensureModeHUD("respawn-hud", "respawn-hud");
+      const secs = Math.ceil(self.respawnAt || 0);
+      el.innerHTML = `
+        <div class="respawn-text">RESPAWN IN</div>
+        <div class="respawn-timer">${secs}</div>
+      `;
+      el.style.display = "block";
+    } else {
+      const el = document.getElementById("respawn-hud");
+      if (el) el.style.display = "none";
+    }
   }
 
   // ---------- TAB SCOREBOARD (rozsireny) ----------

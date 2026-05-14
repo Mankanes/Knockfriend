@@ -511,6 +511,9 @@
               <option value="skybridge">Skybridge</option>
               <option value="pillars">Pillars</option>
               <option value="chasm">Chasm</option>
+              <option value="industrial">Industrial</option>
+              <option value="rooftops">Rooftops</option>
+              <option value="caves">Caves</option>
             </select>
           </div>
         </div>
@@ -525,7 +528,32 @@
 
           <div class="setting-row">
             <div class="setting-label">
-              ROUNDS TO WIN
+              GAME MODE
+              <span id="host-only-tag-mode" class="host-tag">Host only</span>
+            </div>
+            <div class="mode-buttons" id="mode-buttons">
+              <button class="mode-btn active" data-mode="ffa">
+                <span class="mode-name">FFA</span>
+                <span class="mode-hint">Free for all</span>
+              </button>
+              <button class="mode-btn" data-mode="tdm">
+                <span class="mode-name">TDM</span>
+                <span class="mode-hint">Team Deathmatch</span>
+              </button>
+              <button class="mode-btn" data-mode="ctf">
+                <span class="mode-name">CTF</span>
+                <span class="mode-hint">Capture the Flag</span>
+              </button>
+              <button class="mode-btn" data-mode="gungame">
+                <span class="mode-name">GUN</span>
+                <span class="mode-hint">Gun Game</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
+              <span id="winscore-label">ROUNDS TO WIN</span>
               <span id="host-only-tag-1" class="host-tag">Host only</span>
             </div>
             <div class="win-buttons" id="win-buttons">
