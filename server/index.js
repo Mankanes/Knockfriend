@@ -247,6 +247,104 @@ const SHARED = {
         { x: 580, y: 160 }, { x: 1000, y: 160 },
       ],
     },
+    // ARENA - uzavrena bezvoid arena, symetricka (idealni pro TDM/CTF)
+    arena: {
+      name: "Arena", bg: "#1a1018", bgAccent: "#3a2030",
+      platforms: [
+        // Spodni floor (cely - bez void!)
+        { x: 0, y: 800, w: 1600, h: 100 },
+        // Leve a prave steny (uzavreny prostor)
+        { x: 0, y: 0, w: 30, h: 900 },
+        { x: 1570, y: 0, w: 30, h: 900 },
+        // Symetricke platformy
+        { x: 200, y: 660, w: 200, h: 22 },
+        { x: 1200, y: 660, w: 200, h: 22 },
+        { x: 500, y: 560, w: 200, h: 22 },
+        { x: 900, y: 560, w: 200, h: 22 },
+        // Stred (capture point feel)
+        { x: 700, y: 460, w: 200, h: 22 },
+        // Vyssi platformy
+        { x: 250, y: 380, w: 180, h: 22, destructible: true, hp: 70 },
+        { x: 1170, y: 380, w: 180, h: 22, destructible: true, hp: 70 },
+        { x: 600, y: 300, w: 100, h: 22 },
+        { x: 900, y: 300, w: 100, h: 22 },
+        // Vrcholova platforma
+        { x: 690, y: 180, w: 220, h: 22 },
+      ],
+      spawns: [
+        { x: 100, y: 740 }, { x: 1450, y: 740 },
+        { x: 280, y: 600 }, { x: 1280, y: 600 },
+        { x: 580, y: 500 }, { x: 980, y: 500 },
+        { x: 750, y: 400 }, { x: 800, y: 120 },
+      ],
+    },
+    // BOWL - misovita mapa s ramenem nahoru, bez void
+    bowl: {
+      name: "Bowl", bg: "#0d1a26", bgAccent: "#1e3349",
+      platforms: [
+        // Spodni misa (siroka, nelze spadnout)
+        { x: 0, y: 800, w: 1600, h: 100 },
+        // Sikme stranky misy (vlastne stupne)
+        { x: 0, y: 720, w: 200, h: 80 },
+        { x: 1400, y: 720, w: 200, h: 80 },
+        { x: 100, y: 640, w: 150, h: 80 },
+        { x: 1350, y: 640, w: 150, h: 80 },
+        // Strední platformy
+        { x: 350, y: 580, w: 200, h: 22 },
+        { x: 1050, y: 580, w: 200, h: 22 },
+        { x: 700, y: 540, w: 200, h: 22, destructible: true, hp: 80 },
+        // Bocni vyssi
+        { x: 250, y: 420, w: 180, h: 22 },
+        { x: 1170, y: 420, w: 180, h: 22 },
+        // Vrch
+        { x: 550, y: 320, w: 150, h: 22 },
+        { x: 900, y: 320, w: 150, h: 22 },
+        { x: 720, y: 180, w: 160, h: 22 },
+      ],
+      spawns: [
+        { x: 100, y: 660 }, { x: 1450, y: 660 },
+        { x: 420, y: 520 }, { x: 1120, y: 520 },
+        { x: 770, y: 480 }, { x: 320, y: 360 },
+        { x: 1240, y: 360 }, { x: 790, y: 120 },
+      ],
+    },
+    // FORTRESS - velka aréna se steny a uvnitr vez (ideal pro CTF)
+    fortress: {
+      name: "Fortress", bg: "#1a1a0d", bgAccent: "#3a3a1e",
+      platforms: [
+        // Spodni floor
+        { x: 0, y: 800, w: 1600, h: 100 },
+        // Leve a prave bocnice (steny)
+        { x: 0, y: 500, w: 60, h: 300 },
+        { x: 1540, y: 500, w: 60, h: 300 },
+        // Hradby - leva strana (red base)
+        { x: 100, y: 680, w: 220, h: 22 },
+        { x: 60, y: 580, w: 180, h: 22 },
+        { x: 280, y: 580, w: 80, h: 22 },
+        // Hradby - prava strana (blue base)
+        { x: 1280, y: 680, w: 220, h: 22 },
+        { x: 1360, y: 580, w: 180, h: 22 },
+        { x: 1240, y: 580, w: 80, h: 22 },
+        // Stredni vez/most
+        { x: 500, y: 680, w: 250, h: 22 },
+        { x: 850, y: 680, w: 250, h: 22 },
+        { x: 600, y: 540, w: 400, h: 22, destructible: true, hp: 100 },
+        // Horni patro
+        { x: 380, y: 380, w: 180, h: 22 },
+        { x: 1040, y: 380, w: 180, h: 22 },
+        { x: 700, y: 320, w: 200, h: 22 },
+        // Vrcholova
+        { x: 740, y: 160, w: 120, h: 22 },
+      ],
+      spawns: [
+        // Vlevo (red strana)
+        { x: 120, y: 620 }, { x: 250, y: 740 }, { x: 100, y: 520 },
+        // Vpravo (blue strana)
+        { x: 1430, y: 620 }, { x: 1330, y: 740 }, { x: 1450, y: 520 },
+        // Stred
+        { x: 600, y: 480 }, { x: 950, y: 480 },
+      ],
+    },
   },
 };
 
