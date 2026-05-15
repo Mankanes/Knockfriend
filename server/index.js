@@ -40,6 +40,7 @@ const SHARED = {
     MAX_PLAYERS: 8,
     PRE_ROUND: 3.0,
     POST_ROUND: 4.0,
+    POST_MATCH: 6.0, // doba zobrazeni "X WINS THE MATCH" pred navratem do lobby
     MATCH_WIN_SCORE: 3,
   },
 
@@ -1326,6 +1327,44 @@ class Game {
     this.phase = "matchover";
     this.phaseTimer = SHARED.ROUND.POST_MATCH;
     this.events.push({ type: "match_over", winner: this.matchWinner });
+
+    // Tracking statistik + XP pro vsechny hrace (jako v endRound)
+    const now = Date.now();
+    const mode = this.matchSettings.gameMode;
+    for (const p of this.players.values()) {
+      if (p.isBot || !p.username) continue;
+      if (!users[p.username]) continue;
+      if (!users[p.username].stats) users[p.username].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
+      users[p.username].stats.gamesPlayed++;
+      let xpEarned = XP_REWARDS.matchPlayed;
+      let reason = "Match played";
+
+      // Vyherce - vyhodnoceni podle modu
+      let isWinner = false;
+      if (mode === "gungame") {
+        // matchWinner = playerId
+        isWinner = (p.id === this.matchWinner);
+      } else if (mode === "tdm" || mode === "ctf") {
+        // matchWinner = "red"/"blue", porovnat s teamem
+        isWinner = (p.team === this.matchWinner);
+      } else {
+        // FFA - playerId
+        isWinner = (p.id === this.matchWinner);
+      }
+
+      if (isWinner) {
+        users[p.username].stats.wins++;
+        xpEarned += XP_REWARDS.win;
+        reason = "Match won!";
+      }
+      users[p.username].stats.xp = (users[p.username].stats.xp || 0) + xpEarned;
+      if (p.matchStartTime) {
+        users[p.username].stats.playTimeMs += (now - p.matchStartTime);
+        p.matchStartTime = now;
+      }
+      saveUser(p.username);
+      emitToUser(p.username, "xp_gained", { amount: xpEarned, reason, totalXP: users[p.username].stats.xp });
+    }
   }
 
   // CTF flag logic - pickup, capture, drop, return
