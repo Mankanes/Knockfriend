@@ -3147,6 +3147,9 @@ io.on("connection", (socket) => {
       }
       else if (main === "setxp") {
         // /setxp [username] <amount>  - nastavi XP uzivatele (admin only)
+        if (!socket.data?.isAdmin) {
+          return sendConsole(socket, "Tento prikaz je jen pro adminy", "error");
+        }
         if (parts.length < 2) {
           return sendConsole(socket, "Pouziti: setxp [username] <amount>", "error");
         }
@@ -3182,7 +3185,10 @@ io.on("connection", (socket) => {
         emitToUser(targetUsername, "xp_gained", { amount: 0, reason: "Admin set", totalXP: amount });
       }
       else if (main === "maxrank") {
-        // /maxrank [username] - nastavi user na Grandmaster 3 (max XP)
+        // /maxrank [username] - nastavi user na Grandmaster 3 (max XP) - admin only
+        if (!socket.data?.isAdmin) {
+          return sendConsole(socket, "Tento prikaz je jen pro adminy", "error");
+        }
         const targetUsername = parts[1] || socket.data?.username;
         if (!targetUsername) {
           return sendConsole(socket, "Musis byt prihlasen", "error");
