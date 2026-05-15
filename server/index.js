@@ -3051,6 +3051,8 @@ io.on("connection", (socket) => {
         sendConsole(socket, "  map <name>       - zmen mapu (jen v lobby)", "info");
         sendConsole(socket, "  start            - spusti zapas (i bez ready check)", "info");
         sendConsole(socket, "  list             - vypis hracu", "info");
+        sendConsole(socket, "  setxp [user] N   - nastav XP (pro sebe pokud bez user)", "info");
+        sendConsole(socket, "  maxrank [user]   - nastav max rank (Grandmaster 3)", "info");
       }
       else if (main === "bot" && args[0] === "add") {
         if (room.game.players.size >= SHARED.ROUND.MAX_PLAYERS) {
@@ -3142,6 +3144,59 @@ io.on("connection", (socket) => {
         for (const p of room.game.players.values()) {
           sendConsole(socket, `  ${p.isBot ? "[BOT]" : "     "} ${p.name} (hp:${Math.round(p.hp)} ${p.alive ? "alive" : "dead"})`, "info");
         }
+      }
+      else if (main === "setxp") {
+        // /setxp [username] <amount>  - nastavi XP uzivatele (admin only)
+        if (parts.length < 2) {
+          return sendConsole(socket, "Pouziti: setxp [username] <amount>", "error");
+        }
+        let targetUsername, amount;
+        if (parts.length === 2) {
+          // /setxp <amount> - nastavi MOJE xp
+          targetUsername = socket.data?.username;
+          amount = parseInt(parts[1]);
+        } else {
+          targetUsername = parts[1];
+          amount = parseInt(parts[2]);
+        }
+        if (!targetUsername) {
+          return sendConsole(socket, "Musis byt prihlasen pro setxp na sebe", "error");
+        }
+        if (isNaN(amount) || amount < 0) {
+          return sendConsole(socket, "Neplatne XP cislo (musi byt >= 0)", "error");
+        }
+        if (amount > 999999) {
+          return sendConsole(socket, "Max XP: 999999", "error");
+        }
+        if (!users[targetUsername]) {
+          return sendConsole(socket, `Uzivatel '${targetUsername}' neexistuje`, "error");
+        }
+        if (!users[targetUsername].stats) {
+          users[targetUsername].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
+        }
+        users[targetUsername].stats.xp = amount;
+        saveUsers();
+        const rank = getRankInfo(amount);
+        sendConsole(socket, `OK: ${targetUsername} ma teď ${amount} XP (${rank.name})`, "ok");
+        // Notifikuj uzivatele jestli je online
+        emitToUser(targetUsername, "xp_gained", { amount: 0, reason: "Admin set", totalXP: amount });
+      }
+      else if (main === "maxrank") {
+        // /maxrank [username] - nastavi user na Grandmaster 3 (max XP)
+        const targetUsername = parts[1] || socket.data?.username;
+        if (!targetUsername) {
+          return sendConsole(socket, "Musis byt prihlasen", "error");
+        }
+        if (!users[targetUsername]) {
+          return sendConsole(socket, `Uzivatel '${targetUsername}' neexistuje`, "error");
+        }
+        if (!users[targetUsername].stats) {
+          users[targetUsername].stats = { gamesPlayed: 0, kills: 0, deaths: 0, wins: 0, playTimeMs: 0, xp: 0 };
+        }
+        users[targetUsername].stats.xp = 25000;
+        saveUsers();
+        sendConsole(socket, `OK: ${targetUsername} je teď Grandmaster 3 (25000 XP)`, "ok");
+        emitToUser(targetUsername, "xp_gained", { amount: 0, reason: "Max rank", totalXP: 25000 });
       }
       else {
         sendConsole(socket, `Neznamy prikaz: ${main}. Napis 'help'`, "error");
