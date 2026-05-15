@@ -3194,6 +3194,10 @@
       platforms: s.platforms,
       players: s.players.map((p) => ({ ...p })),
       bullets: s.bullets.map((b) => ({ ...b })),
+      // Game mode data
+      gameMode: s.gameMode,
+      teamScores: s.teamScores,
+      flags: s.flags,
     };
   }
 

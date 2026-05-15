@@ -221,8 +221,6 @@ const SHARED = {
     caves: {
       name: "Caves", bg: "#180f12", bgAccent: "#3a2418",
       platforms: [
-        // Vrch (strop)
-        { x: 0, y: 0, w: 1600, h: 60 },
         // Spodni patro
         { x: 0, y: 720, w: 500, h: 40 },
         { x: 600, y: 720, w: 400, h: 40 },
