@@ -1143,11 +1143,23 @@ class Game {
     if (mode === "ctf" && victim.hasFlag) {
       const flag = this.flags[victim.hasFlag];
       if (flag) {
-        flag.holderId = null;
-        flag.atBase = false; // padla na zem, vrati se nebo zvedne nekdo
-        flag.x = victim.x;
-        flag.y = victim.y;
-        flag.dropTime = Date.now(); // timer pro auto-return
+        // Pokud spadl do void (fall) NEBO je pod death zone, vrat vlajku rovnou na base
+        const fellIntoVoid = cause === "fall" || victim.y > SHARED.WORLD_HEIGHT;
+        if (fellIntoVoid) {
+          flag.x = flag.baseX;
+          flag.y = flag.baseY;
+          flag.atBase = true;
+          flag.holderId = null;
+          flag.dropTime = null;
+          this.events.push({ type: "flag_returned", team: victim.hasFlag, reason: "fell_into_void" });
+        } else {
+          // Normalni smrt - vlajka padne na zem, auto-return po 10s
+          flag.holderId = null;
+          flag.atBase = false;
+          flag.x = victim.x;
+          flag.y = victim.y;
+          flag.dropTime = Date.now();
+        }
       }
       victim.hasFlag = null;
     }
@@ -1351,6 +1363,16 @@ class Game {
           // Holder umrel/zmizel - vlajka spadne (uz reseno v killPlayer pro death)
           flag.holderId = null;
         }
+      }
+
+      // Safeguard - pokud je vlajka mimo svet (void/pod death zone), vrat na base
+      if (!flag.holderId && !flag.atBase && flag.y > SHARED.WORLD_HEIGHT) {
+        flag.x = flag.baseX;
+        flag.y = flag.baseY;
+        flag.atBase = true;
+        flag.dropTime = null;
+        this.events.push({ type: "flag_returned", team, reason: "void" });
+        continue;
       }
 
       // Auto-return po 10s na zemi (mimo base)
