@@ -9,7 +9,8 @@
   let selfId = null;
   let roomId = null;
 
-  const SNAPSHOT_BUFFER_MS = 70;
+  // 100ms buffer - pokryje ~3 snapshoty pri 30Hz broadcast (plynula interpolace)
+  const SNAPSHOT_BUFFER_MS = 100;
   const snapshots = [];
 
   const screens = {

@@ -1608,7 +1608,7 @@ class Game {
       })),
       players: [...this.players.values()].map((p) => ({
         id: p.id, name: p.name, color: p.color,
-        x: +p.x.toFixed(2), y: +p.y.toFixed(2),
+        x: Math.round(p.x), y: Math.round(p.y),
         facing: p.facing,
         hp: Math.max(0, Math.round(p.hp)),
         alive: p.alive, weapon: p.weapon,
@@ -1620,19 +1620,19 @@ class Game {
         ping: p.isBot ? 0 : (p.ping || 0),
         team: p.team,
         hasFlag: p.hasFlag,
-        respawnAt: +(p.respawnAt || 0).toFixed(2),
+        respawnAt: +(p.respawnAt || 0).toFixed(1),
         ggLevel: this.matchSettings.gameMode === "gungame" ? (this.gunGameProgress.get(p.id) || 0) : undefined,
       })),
       bullets: this.bullets.map((b) => ({
-        id: b.id, x: +b.x.toFixed(1), y: +b.y.toFixed(1),
-        vx: +b.vx.toFixed(1), vy: +b.vy.toFixed(1),
+        id: b.id, x: Math.round(b.x), y: Math.round(b.y),
+        vx: Math.round(b.vx), vy: Math.round(b.vy),
         weapon: b.weapon, color: b.color, radius: b.radius,
         isRocket: b.isRocket, isLaser: b.isLaser,
         isGrenade: b.isGrenade, isPunch: b.isPunch, isAwp: b.isAwp,
         fuseRemaining: b.fuseRemaining,
       })),
       pickups: this.pickups.map((pu) => ({
-        id: pu.id, x: +pu.x.toFixed(1), y: +pu.y.toFixed(1), weapon: pu.weapon,
+        id: pu.id, x: Math.round(pu.x), y: Math.round(pu.y), weapon: pu.weapon,
       })),
       gameMode: this.matchSettings.gameMode,
       ggChainLength: Game.GUN_GAME_CHAIN.length,
@@ -1664,6 +1664,11 @@ const io = new Server(server, {
   cors: { origin: "*" },
   pingInterval: 10000,
   pingTimeout: 8000,
+  // BANDWIDTH: zapni kompresi zprav (gzip-like) - snapshoty se zmensi ~60-70%
+  perMessageDeflate: {
+    threshold: 512, // komprimuj zpravy vetsi nez 512 bajtu
+  },
+  httpCompression: true,
 });
 
 // ============================================================
@@ -3686,6 +3691,16 @@ setInterval(() => {
 
   for (const [roomId, room] of rooms) {
     room.game.update(dt);
+    const phase = room.game.phase;
+    // BANDWIDTH OPTIMALIZACE:
+    // 1) V lobby posilej jen 4x/s (60/15)
+    // 2) V aktivni hre posilej 30x/s misto 60x/s (klient interpoluje, rozdil neni znat)
+    //    Server simuluje na 60Hz (presna fyzika) ale broadcast je 30Hz = pul dat
+    if (phase === "lobby") {
+      if (room.game.tickCount % 15 !== 0) continue; // 4x/s
+    } else {
+      if (room.game.tickCount % 2 !== 0) continue;  // 30x/s
+    }
     const snap = room.game.snapshot();
     io.to(roomId).emit("state", snap);
   }
