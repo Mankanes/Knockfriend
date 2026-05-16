@@ -834,6 +834,44 @@
     sortSelect.onchange = refreshLeaderboard;
   }
 
+  // Mini leaderboard na auth (login) obrazovce - top 5 podle XP
+  async function refreshAuthLeaderboard() {
+    const listEl = document.getElementById("auth-lb-list");
+    if (!listEl) return;
+    try {
+      const r = await fetch(`/api/stats/leaderboard?sort=xp&limit=5`);
+      const data = await r.json();
+      if (!data.ok || !data.players || data.players.length === 0) {
+        listEl.innerHTML = '<div class="auth-lb-loading">No players yet</div>';
+        return;
+      }
+      listEl.innerHTML = "";
+      data.players.forEach((p, idx) => {
+        const pos = idx + 1;
+        const row = document.createElement("div");
+        row.className = `auth-lb-row${pos <= 3 ? " top" + pos : ""}`;
+        const badge = p.isAdmin ? '<span class="auth-lb-badge">A</span>' :
+                      (p.isTester ? '<span class="auth-lb-badge">T</span>' : '');
+        row.innerHTML = `
+          <div class="auth-lb-rank">#${pos}</div>
+          ${badge}
+          <div class="auth-lb-name" title="${escapeHtml(p.username)}">${escapeHtml(p.username)}</div>
+          <div class="auth-lb-xp">${p.xp}</div>
+        `;
+        listEl.appendChild(row);
+      });
+    } catch (err) {
+      listEl.innerHTML = '<div class="auth-lb-loading">Could not load</div>';
+    }
+  }
+  // Nacti hned + refresh kazdych 30s dokud jsme na auth
+  refreshAuthLeaderboard();
+  setInterval(() => {
+    if (document.getElementById("auth")?.classList.contains("active")) {
+      refreshAuthLeaderboard();
+    }
+  }, 30000);
+
   // ---------- AUDIO SYSTEM ----------
   const bgmMenu = document.getElementById("bgm-menu");
   const bgmGame = document.getElementById("bgm-game");

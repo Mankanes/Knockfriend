@@ -3716,3 +3716,96 @@ body:has(#game.screen.active) .btn-feedback {
   .respawn-timer { font-size: 36px; }
   .mode-buttons { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ======================= AUTH LEADERBOARD ======================= */
+.auth-leaderboard {
+  position: absolute;
+  top: 50%;
+  right: 40px;
+  transform: translateY(-50%);
+  width: 260px;
+  background: rgba(15, 20, 36, 0.85);
+  border: 1px solid rgba(74, 144, 226, 0.3);
+  border-radius: 14px;
+  padding: 18px;
+  z-index: 5;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.auth-lb-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ff8a3d;
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.auth-lb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-lb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.auth-lb-rank {
+  font-weight: 800;
+  color: #5a6a90;
+  min-width: 22px;
+}
+.auth-lb-row.top1 { background: rgba(255, 215, 0, 0.12); }
+.auth-lb-row.top1 .auth-lb-rank { color: #ffd700; }
+.auth-lb-row.top2 { background: rgba(192, 192, 192, 0.1); }
+.auth-lb-row.top2 .auth-lb-rank { color: #c0c0c0; }
+.auth-lb-row.top3 { background: rgba(205, 127, 50, 0.1); }
+.auth-lb-row.top3 .auth-lb-rank { color: #cd7f32; }
+
+.auth-lb-badge {
+  font-size: 8px;
+  font-weight: 800;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(74, 144, 226, 0.25);
+  color: #94a3c4;
+  letter-spacing: 0.5px;
+}
+
+.auth-lb-name {
+  flex: 1;
+  color: #e8eeff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.auth-lb-xp {
+  font-weight: 700;
+  color: #ff8a3d;
+  font-size: 11px;
+}
+
+.auth-lb-loading {
+  text-align: center;
+  color: #5a6a90;
+  font-size: 11px;
+  padding: 20px;
+  font-style: italic;
+}
+
+/* Skry leaderboard na malych obrazovkach (aby neprekryval auth card) */
+@media (max-width: 1100px) {
+  .auth-leaderboard {
+    display: none;
+  }
+}

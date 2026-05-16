@@ -1385,10 +1385,13 @@ class Game {
   checkWinCondition() {
     const mode = this.matchSettings.gameMode;
 
-    // GunGame - matchWinner uz nastaven, koncime match
-    if (mode === "gungame" && this.matchWinner) {
-      this.endMatch();
-      return;
+    // GunGame - hra pokracuje dokud nekdo neprojde vsechny zbrane
+    // Zadne kola, jen respawn. matchWinner se nastavi v killPlayer kdyz nekdo dokonci chain
+    if (mode === "gungame") {
+      if (this.matchWinner) {
+        this.endMatch();
+      }
+      return; // GunGame NIKDY nepada do FFA round logiky
     }
 
     // TDM - kdo dosahne winScore * 5 killu vyhrava match
