@@ -3809,3 +3809,8 @@ body:has(#game.screen.active) .btn-feedback {
     display: none;
   }
 }
+
+/* Skryj setting-row kdyz neni relevantni pro dany game mode (napr. ROUNDS TO WIN v GunGame) */
+.setting-row.hidden-mode {
+  display: none !important;
+}

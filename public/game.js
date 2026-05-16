@@ -1938,13 +1938,25 @@
         btn.classList.toggle("active", m === gm);
         btn.disabled = !isHost;
       });
-      // Aktualizuj label "ROUNDS TO WIN" podle modu
+      // Aktualizuj label "ROUNDS TO WIN" podle modu + schovej cely radek v GunGame
       const wsLabel = document.getElementById("winscore-label");
-      if (wsLabel) {
-        if (gm === "tdm") wsLabel.textContent = "WINS (×5 kills)";
-        else if (gm === "ctf") wsLabel.textContent = "FLAGS TO WIN";
-        else if (gm === "gungame") wsLabel.textContent = "ROUNDS TO WIN";
-        else wsLabel.textContent = "ROUNDS TO WIN";
+      const wsRow = document.getElementById("winscore-row");
+      if (gm === "gungame") {
+        // GunGame nema kola - hraje se dokud nekdo neprojde vsechny zbrane
+        if (wsRow) {
+          wsRow.style.display = "none";
+          wsRow.classList.add("hidden-mode");
+        }
+      } else {
+        if (wsRow) {
+          wsRow.style.display = "";  // vrati zpet na CSS default (flex)
+          wsRow.classList.remove("hidden-mode");
+        }
+        if (wsLabel) {
+          if (gm === "tdm") wsLabel.textContent = "WINS (×5 kills)";
+          else if (gm === "ctf") wsLabel.textContent = "FLAGS TO WIN";
+          else wsLabel.textContent = "ROUNDS TO WIN";
+        }
       }
 
       // Phone-only toggle stav
