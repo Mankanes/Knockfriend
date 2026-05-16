@@ -3857,6 +3857,89 @@
       ctx.shadowBlur = 8;
       ctx.shadowColor = "#54e0ff";
       ctx.fillRect(28, -2, 2, 4);
+    } else if (p.weapon === "awp") {
+      // AWP Sniper - styl CS2: dlouha zelena hlaven, scope, pazba
+      // Pazba (vzadu, tmave zelena)
+      ctx.fillStyle = "#2d3a1f";
+      ctx.beginPath();
+      ctx.moveTo(-14, -3);
+      ctx.lineTo(-3, -5);
+      ctx.lineTo(-3, 6);
+      ctx.lineTo(-14, 4);
+      ctx.closePath();
+      ctx.fill();
+      // Telo zbrane (zeleny mil-spec)
+      ctx.fillStyle = "#4a5d2f";
+      ctx.fillRect(-4, -5, 22, 10);
+      // Horni rail
+      ctx.fillStyle = "#3a4a25";
+      ctx.fillRect(-2, -7, 18, 3);
+      // Dlouha tenka hlaven (charakteristicke pro AWP)
+      ctx.fillStyle = "#2a2a2a";
+      ctx.fillRect(18, -2, 24, 4);
+      // Usti hlavne (muzzle)
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(40, -3, 4, 6);
+      // SCOPE (dalekohled) - charakteristicky prvek AWP
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(2, -13, 14, 6); // telo scope
+      // Cocky scope (leskle)
+      ctx.fillStyle = "#3a5a7a";
+      ctx.beginPath();
+      ctx.arc(4, -10, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#5a8aaa";
+      ctx.beginPath();
+      ctx.arc(14, -10, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Scope mount (nozky)
+      ctx.fillStyle = "#2a2a2a";
+      ctx.fillRect(4, -7, 2, 2);
+      ctx.fillRect(12, -7, 2, 2);
+      // Spousti rukojet
+      ctx.fillStyle = "#2d3a1f";
+      ctx.fillRect(0, 5, 5, 7);
+      // Bipod (dvojnozka pod hlavni) - typicke pro odstrelovacku
+      ctx.strokeStyle = "#2a2a2a";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(30, 2);
+      ctx.lineTo(27, 10);
+      ctx.moveTo(30, 2);
+      ctx.lineTo(33, 10);
+      ctx.stroke();
+    } else if (p.weapon === "grenade") {
+      // Granat v ruce - mala zelena koule s pojistkou
+      ctx.fillStyle = "#3b5d2a";
+      ctx.beginPath();
+      ctx.arc(6, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+      // Segmenty granatu
+      ctx.strokeStyle = "#2a4020";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(12, 0);
+      ctx.moveTo(6, -6); ctx.lineTo(6, 6);
+      ctx.stroke();
+      // Pojistka nahore
+      ctx.fillStyle = "#888";
+      ctx.fillRect(4, -10, 4, 4);
+    } else if (p.weapon === "punch") {
+      // Pest - rukavice
+      ctx.fillStyle = "#d4a056";
+      ctx.beginPath();
+      ctx.arc(8, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+      // Klouby
+      ctx.fillStyle = "#b8843a";
+      for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc(11, -3 + i * 3, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Zapesti
+      ctx.fillStyle = "#8a6428";
+      ctx.fillRect(-2, -4, 6, 8);
     } else {
       ctx.fillStyle = "#333";
       ctx.fillRect(0, -4, 18, 8);
