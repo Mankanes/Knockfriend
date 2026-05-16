@@ -572,8 +572,9 @@ class Game {
       this.flags.blue = null;
     }
 
-    // GunGame - reset progress na pistol pro vsechny
+    // GunGame - reset progress na pistol pro vsechny + zadne pickupy
     if (mode === "gungame") {
+      this.pickups = []; // zadne zbrane na zemi v GunGame
       for (const p of this.players.values()) {
         this.gunGameProgress.set(p.id, 0); // pistol
       }
@@ -750,7 +751,10 @@ class Game {
     if (this.phase === "playing") {
       this.simulatePlayers(dt, true);
       this.simulateBullets(dt);
-      this.simulatePickups(dt);
+      // GunGame nema pickupy - zbrane se meni jen killy
+      if (this.matchSettings.gameMode !== "gungame") {
+        this.simulatePickups(dt);
+      }
       // CTF - aktualizace vlajek (pickup, capture, auto-return)
       if (this.matchSettings.gameMode === "ctf") {
         this.simulateCTF(dt);
@@ -1617,6 +1621,7 @@ class Game {
         team: p.team,
         hasFlag: p.hasFlag,
         respawnAt: +(p.respawnAt || 0).toFixed(2),
+        ggLevel: this.matchSettings.gameMode === "gungame" ? (this.gunGameProgress.get(p.id) || 0) : undefined,
       })),
       bullets: this.bullets.map((b) => ({
         id: b.id, x: +b.x.toFixed(1), y: +b.y.toFixed(1),
@@ -1630,6 +1635,7 @@ class Game {
         id: pu.id, x: +pu.x.toFixed(1), y: +pu.y.toFixed(1), weapon: pu.weapon,
       })),
       gameMode: this.matchSettings.gameMode,
+      ggChainLength: Game.GUN_GAME_CHAIN.length,
       teamScores: this.teamScores,
       flags: {
         red: this.flags.red ? {

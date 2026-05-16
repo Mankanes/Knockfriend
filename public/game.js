@@ -3196,6 +3196,7 @@
       bullets: s.bullets.map((b) => ({ ...b })),
       // Game mode data
       gameMode: s.gameMode,
+      ggChainLength: s.ggChainLength,
       teamScores: s.teamScores,
       flags: s.flags,
     };
@@ -4162,13 +4163,15 @@
       if (el) el.style.display = "none";
     }
 
-    // GunGame - aktualni level / next weapon
+    // GunGame - aktualni level / next weapon + progress
     if (mode === "gungame") {
       const self = state.players.find(p => p.id === selfId);
       if (self) {
         const wd = SHARED.WEAPONS[self.weapon];
         const el = ensureModeHUD("gungame-hud", "gungame-hud");
-        el.textContent = `GUN GAME — ${wd?.name || self.weapon}`;
+        const lvl = (self.ggLevel || 0) + 1;
+        const total = state.ggChainLength || 7;
+        el.textContent = `GUN GAME ${lvl}/${total} — ${wd?.name || self.weapon}`;
         el.style.display = "block";
       }
     } else {
