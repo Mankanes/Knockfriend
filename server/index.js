@@ -3,6 +3,15 @@
 // Vse v jednom souboru: konstanty, herni simulace, server, sockets
 // ============================================================
 
+// Nacti .env soubor pokud existuje (jen pro lokalni vyvoj)
+// Na Renderu se pouzivaji env vars primo, .env tam neni potreba
+try {
+  require("dotenv").config();
+} catch (err) {
+  // dotenv neni nainstalovany nebo .env neexistuje - to je OK
+  // (na produkci se pouzivaji prave env vars)
+}
+
 const express = require("express");
 const http = require("http");
 const path = require("path");
