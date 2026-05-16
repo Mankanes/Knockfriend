@@ -3838,6 +3838,11 @@
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(ang);
+    // Kdyz mirime doleva (zbran je otocena o ~180°), zbran by byla vzhuru nohama
+    // (scope dole, bipod nahore). Flipneme ji vertikalne aby zustala "vzprimena".
+    if (aimX < 0) {
+      ctx.scale(1, -1);
+    }
 
     if (p.weapon === "rocket") {
       ctx.fillStyle = "#444";
